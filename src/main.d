@@ -2,18 +2,20 @@ private import std.stdio;
 private import std.string;
 private import Quest;
 private import parts.Resolver;
-
+private import parts.LinePossibility;
 import std.algorithm;
 
 void main(string[] args) {
-	int[][] vHints = [[4],[1]];
-	int[][] hHints = [[1],[1],[1],[1],[1]];
-	auto q = new Quest(
-		vHints,
-		hHints);
-
-	auto r = new Resolver(q);
-	writeln(r);
+	void test(Cell c, int x) {
+		writeln(format("%s @ %d", c, x));
+	}
+	auto obj = new LinePossibility(null, 17, [3,3], &test);
+	obj.checkUp();
+	obj.set(Cell.Fill, 16);
+	writeln("-");
+	obj.set(Cell.Empty, 3);
+	obj.set(Cell.Fill, 2);
+	obj.checkUp();
 }
 
 enum Cell {

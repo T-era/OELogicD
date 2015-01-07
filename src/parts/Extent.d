@@ -1,10 +1,12 @@
 module parts.Extent;
 
+private import std.string;
+private import std.stdio;
 private import parts.LinePossibility;
 
 class Extent {
 	private LinePossibility parent;
-	private int length;
+	public int length;
 	public int min;
 	public int max;
 
@@ -16,7 +18,7 @@ class Extent {
 		return min <= arg
 			&& arg <= max;
 	}
-	public bool fixed() {
+	public bool isFixed() {
 		return max - min + 1 == length;
 	}
 	public void fillCenter(void delegate(int) fillCallback) {
@@ -26,9 +28,12 @@ class Extent {
 		} else {
 			int fillMin = max - length + 1;
 			int fillMax = min + length - 1;
-			for (int i = min + fillMin; i <= fillMin; i ++) {
+			for (int i = fillMin; i <= fillMax; i ++) {
 				fillCallback(i);
 			}
 		}
+	}
+	public override string toString() {
+		return format("%d-%d@%d", min, max, length);
 	}
 }

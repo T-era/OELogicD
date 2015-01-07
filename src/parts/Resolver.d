@@ -23,10 +23,10 @@ class Resolver {
 		vPossibility.length = width;
 		hPossibility.length = height;
 		for (int x = 0; x < width; x ++) {
-			vPossibility[x] = new LinePossibility(this, width, quest.vHints[x], &this.getHp);
+			vPossibility[x] = new LinePossibility(this, height, quest.vHints[x], this.verticalCallback(x));
 		}
 		for (int y = 0; y < height; y ++) {
-			hPossibility[y] = new LinePossibility(this, height, quest.hHints[y], &this.getHp);
+			hPossibility[y] = new LinePossibility(this, width, quest.hHints[y], this.horizontalCallback(y));
 		}
 
 		int xSum = 0;
@@ -42,11 +42,41 @@ class Resolver {
 			throw new Exception("??");
 		}
 	}
-	public LinePossibility getHp(int y) {
-		return hPossibility[y];
+	public void checkUp() {
+		foreach(LinePossibility lp; vPossibility) {
+			lp.checkUp();
+		}
+		foreach(LinePossibility lp; hPossibility) {
+			lp.checkUp();
+		}
 	}
-	public LinePossibility getVp(int x) {
-		return vPossibility[x];
+	public auto verticalCallback(int x) {
+		void _inner(Cell c, int y) {
+			if (cells[y][x] != c) {
+				if (cells[y][x] != Cell.Unknown) {
+					writeln(format("(%d, %d), %s, %s", x, y, c, cells[y][x]));
+					throw new Exception("!");
+				}
+				cells[y][x] = c;
+				hPossibility[y].set(c, x);
+				hPossibility[y].checkUp();
+			}
+		}
+		return &_inner;
+	}
+	public auto horizontalCallback(int y) {
+		void _inner(Cell c, int x) {
+			if (cells[y][x] != c) {
+				if (cells[y][x] != Cell.Unknown) {
+					writeln(format("(%d, %d), %s, %s", x, y, c, cells[y][x]));
+					throw new Exception("!");
+				}
+				cells[y][x] = c;
+				vPossibility[x].set(c, y);
+				vPossibility[x].checkUp();
+			}
+		}
+		return &_inner;
 	}
 
 	override string toString() {
