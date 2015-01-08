@@ -11,15 +11,18 @@ private import main;
 class LinePossibility {
 	Resolver parent;
 	int[] hints;
+	bool[int] fixed;
 	Extent[] extents;
 	int size;
 	void delegate(Cell, int) callback;
+	Cell delegate(int) getCell;
 
-	this(Resolver parent, int size, int[] hints, void delegate(Cell, int) f) {
+	this(Resolver parent, int size, int[] hints, void delegate(Cell, int) f, Cell delegate(int) getF) {
 		this.parent = parent;
 		this.size = size;
 		this.hints = hints;
 		this.callback = f;
+		this.getCell = getF;
 		this.extents.length = hints.length;
 
 		int temp = 0;
@@ -44,7 +47,6 @@ class LinePossibility {
 			int prevMax = -1;
 			foreach (Extent ex; extents) {
 				if (ex.isFixed()) {
-					writeln("f" ~ ex.toString());
 					if (ex.min-1 >= 0)
 						callback(Cell.Empty, ex.min-1);
 					if (ex.max+1 < size)
@@ -102,22 +104,60 @@ class LinePossibility {
 			ex.max --;
 			ret = true;
 		}
+		ret |= _setFill_checkContains(pos);
+		return ret;
+	}
+	private bool _setFill_checkContains(int pos) {
+		bool ret = false;
 		auto containsList = filter!(ex => ex.contains(pos))(extents).array();
-		if (containsList.length == 1) {
-			auto cEx = containsList[0];
-			write("hoge");
-			writeln(cEx);
-			int newMin = pos - cEx.length + 1;
-			int newMax = pos + cEx.length - 1;
-			if (cEx.min < newMin) {
-				cEx.min = newMin;
+		if (containsList.length != 0) {
+			auto cFirst = containsList[0];
+			auto cLast = containsList[$-1];
+			int newMax = pos + cFirst.length - 1;
+			int newMin = pos - cLast.length + 1;
+			for (int i = pos+1; i <= newMax; i ++) {
+				if (getCell(i) == Cell.Empty) {
+					newMax = i - 1;
+					break;
+				}
+			}
+			for (int i = pos-1; i >= newMin; i --) {
+				if (getCell(i) == Cell.Empty) {
+					newMin = i + 1;
+					break;
+				}
+			}
+			if (cFirst.max > newMax) {
+				int oldValue = cFirst.max;
+				cFirst.max = newMax;
+				eachFillCell(newMax + 1, oldValue, &_setFill_checkContains);
 				ret = true;
 			}
-			if (cEx.max > newMax) {
-				cEx.max = newMax;
+			if (cLast.min < newMin) {
+				int oldValue = cLast.min;
+				cLast.min = newMin;
+				eachFillCell(oldValue, newMin - 1, &_setFill_checkContains);
 				ret = true;
 			}
 		}
 		return ret;
+	}
+	private bool eachFillCell(int min, int max, bool delegate(int) action) {
+		bool hasChange = false;
+		for (int i = min; i <= max; i ++) {
+			if (getCell(i) == Cell.Fill) {
+				hasChange |= action(i);
+			}
+		}
+		return hasChange;
+	}
+
+	public override string toString() {
+		string str = "";
+		foreach (Extent ex; extents) {
+			str ~= ex.toString();
+			str ~= " ";
+		}
+		return str;
 	}
 }

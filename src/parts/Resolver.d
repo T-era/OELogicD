@@ -23,10 +23,10 @@ class Resolver {
 		vPossibility.length = width;
 		hPossibility.length = height;
 		for (int x = 0; x < width; x ++) {
-			vPossibility[x] = new LinePossibility(this, height, quest.vHints[x], this.verticalCallback(x));
+			vPossibility[x] = new LinePossibility(this, height, quest.vHints[x], this.verticalCallback(x), this.getCellAtX(x));
 		}
 		for (int y = 0; y < height; y ++) {
-			hPossibility[y] = new LinePossibility(this, width, quest.hHints[y], this.horizontalCallback(y));
+			hPossibility[y] = new LinePossibility(this, width, quest.hHints[y], this.horizontalCallback(y), this.getCellAtY(y));
 		}
 
 		int xSum = 0;
@@ -54,8 +54,7 @@ class Resolver {
 		void _inner(Cell c, int y) {
 			if (cells[y][x] != c) {
 				if (cells[y][x] != Cell.Unknown) {
-					writeln(format("(%d, %d), %s, %s", x, y, c, cells[y][x]));
-					throw new Exception("!");
+					throw new Exception(format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
 				}
 				cells[y][x] = c;
 				hPossibility[y].set(c, x);
@@ -68,12 +67,33 @@ class Resolver {
 		void _inner(Cell c, int x) {
 			if (cells[y][x] != c) {
 				if (cells[y][x] != Cell.Unknown) {
-					writeln(format("(%d, %d), %s, %s", x, y, c, cells[y][x]));
-					throw new Exception("!");
+					throw new Exception(format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
 				}
 				cells[y][x] = c;
 				vPossibility[x].set(c, y);
 				vPossibility[x].checkUp();
+			}
+		}
+		return &_inner;
+	}
+	public auto getCellAtX(int x) {
+		Cell _inner(int y) {
+			if (0 <= y && y < height
+				&& 0 <= x && x < width) {
+				return cells[y][x];
+			} else {
+				return Cell.Unknown;
+			}
+		}
+		return &_inner;
+	}
+	public auto getCellAtY(int y) {
+		Cell _inner(int x) {
+			if (0 <= y && y < height
+				&& 0 <= x && x < width) {
+				return cells[y][x];
+			} else {
+				return Cell.Unknown;
 			}
 		}
 		return &_inner;
@@ -100,6 +120,16 @@ class Resolver {
 			str ~= "\n";
 		}
 		return str;
+	}
+	public void showDetail() {
+		writeln("||");
+		foreach (LinePossibility lb; vPossibility) {
+			writeln(lb);
+		}
+		writeln("=");
+		foreach (LinePossibility lb; hPossibility) {
+			writeln(lb);
+		}
 	}
 
 	private static int sumOf(int[][] args) {
