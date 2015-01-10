@@ -8,3 +8,8 @@ class Quest {
 	}
 }
 
+enum Cell {
+	Unknown,
+	Fill,
+	Empty
+}

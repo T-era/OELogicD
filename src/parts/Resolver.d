@@ -2,7 +2,6 @@ module parts.Resolver;
 
 private import std.stdio;
 private import std.string;
-private import main;
 private import Quest;
 private import parts.LinePossibility;
 
@@ -52,6 +51,8 @@ class Resolver {
 	}
 	public auto verticalCallback(int x) {
 		void _inner(Cell c, int y) {
+if (0 <= x && x < width
+	&& 0 <= y && y < height)
 			if (cells[y][x] != c) {
 				if (cells[y][x] != Cell.Unknown) {
 					throw new Exception(format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
@@ -65,6 +66,8 @@ class Resolver {
 	}
 	public auto horizontalCallback(int y) {
 		void _inner(Cell c, int x) {
+if (0 <= x && x < width
+	&& 0 <= y && y < height)
 			if (cells[y][x] != c) {
 				if (cells[y][x] != Cell.Unknown) {
 					throw new Exception(format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
