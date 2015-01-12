@@ -15,7 +15,7 @@ class LinePossibility {
 	Extent[] extents;
 	int size;
 	void delegate(Cell, int) callback;
-	Cell delegate(int) getCell;
+	public Cell delegate(int) getCell;
 
 	this(Resolver parent, int size, int[] hints, void delegate(Cell, int) f, Cell delegate(int) getF) {
 		void mixedF(Cell c, int p) {
@@ -31,12 +31,13 @@ class LinePossibility {
 
 		int temp = 0;
 		for (int i = 0; i < hints.length; i ++) {
-			extents[i] = new Extent(this, hints[i]);
+			extents[i] = new Extent(this, hints[i], i == 0 ? null : extents[i-1]);
 			extents[i].min = temp;
 			temp += hints[i] + 1;
 		}
 		temp = size - 1;
 		for (int i = hints.length - 1; i >= 0; i --) {
+			extents[i].setNext(i == hints.length - 1 ? null : extents[i+1]);
 			extents[i].max = temp;
 			temp -= hints[i] + 1;
 		}
@@ -174,8 +175,8 @@ class LinePossibility {
 			max ++;
 		int length = max - min + 1;
 		if (filter!(ex => ex.length > length)(containsList).array().length == 0) {
-			set(Cell.Empty, min - 1);
-			set(Cell.Empty, max + 1);
+			callback(Cell.Empty, min - 1);
+			callback(Cell.Empty, max + 1);
 		}
 	}
 	private bool eachFillCell(int min, int max, bool delegate(int) action) {
