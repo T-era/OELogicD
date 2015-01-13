@@ -2,18 +2,66 @@ module parts.Extent;
 
 private import std.string;
 private import std.stdio;
+private import Quest;
 private import parts.LinePossibility;
 
 class Extent {
-	private LinePossibility parent;
+	private Cell delegate(int) getCell;
+	private Extent prev;
+	private Extent next;
+
 	public int length;
 	public int min;
 	public int max;
 
-	this(LinePossibility parent, int length) {
+	this(Cell delegate(int) getCell, int length, Extent prev) {
+		this.getCell = getCell;
 		this.length = length;
+		this.prev = prev;
+	}
+	void setNext(Extent next) {
+		this.next = next;
 	}
 
+	public void shortenMin(int pos) {
+		if (pos > min) {
+			int len = getShorten(pos, +1);
+			min = pos + len;
+			if (next !is null)
+				next.shortenMin(min + length + 1);
+		}
+	}
+	public void shortenMax(int pos) {
+		if (pos < max) {
+			int len = getShorten(pos, -1);
+			max = pos + len;
+			if (prev !is null)
+				prev.shortenMax(max - length - 1);
+		}
+	}
+	private int getShorten(int pos, int direction) {
+		int temp = 0;
+		bool more;
+		do {
+			more = false;
+			int edge = pos + temp;
+			int edge2 = edge + (direction * length) - direction;
+			if (getCell(edge - direction) == Cell.Fill
+				|| getCell(edge2 + direction) == Cell.Fill) {
+				temp += direction;
+				more = true;
+			} else {
+				for (int i = length - 1; i >= 0; i --) {
+					if (getCell(edge + (direction * i)) == Cell.Empty) {
+						temp += direction * (i + 1);
+						more = true;
+						break;
+					}
+				}
+			}
+		} while (more);
+		return temp;
+	}
 	public bool contains(int arg) {
 		return min <= arg
 			&& arg <= max;

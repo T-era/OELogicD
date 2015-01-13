@@ -15,10 +15,9 @@ void main(string[] args) {
 		hHints);
 
 	auto r = new Resolver(q);
-	//writeln(r);
 	r.checkUp();
 	writeln(r);
-	r.showDetail();
+	//r.showDetail();
 }
 
 enum Cell {

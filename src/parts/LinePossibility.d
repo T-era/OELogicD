@@ -31,7 +31,7 @@ class LinePossibility {
 
 		int temp = 0;
 		for (int i = 0; i < hints.length; i ++) {
-			extents[i] = new Extent(this, hints[i], i == 0 ? null : extents[i-1]);
+			extents[i] = new Extent(getF, hints[i], i == 0 ? null : extents[i-1]);
 			extents[i].min = temp;
 			temp += hints[i] + 1;
 		}
@@ -92,15 +92,11 @@ class LinePossibility {
 		auto containsList = filter!(ex => ex.contains(pos))(extents);
 		foreach(Extent ex; containsList) {
 			if  (pos - ex.min < ex.length) {
-				ex.min = pos + 1;
-				while (getCell(ex.min) == Cell.Empty)
-					ex.min++;
+				ex.shortenMin(pos + 1);
 				ret = true;
 			}
 			if (ex.max - pos < ex.length) {
-				ex.max = pos - 1;
-				while (getCell(ex.max) == Cell.Empty)
-					ex.max--;
+				ex.shortenMax(pos - 1);
 				ret = true;
 			}
 		}
