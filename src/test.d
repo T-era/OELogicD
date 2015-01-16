@@ -1,8 +1,8 @@
 private import std.stdio;
 private import std.string;
 private import Quest;
-private import parts.Resolver;
-private import parts.LinePossibility;
+private import extent_resolver.Resolver;
+private import extent_resolver.LinePossibility;
 import std.algorithm;
 
 void main(string[] args) {

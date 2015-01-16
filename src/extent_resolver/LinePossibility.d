@@ -1,11 +1,11 @@
-module parts.LinePossibility;
+module extent_resolver.LinePossibility;
 
 private import std.algorithm;
 private import std.range;
 private import std.stdio;
 private import std.string;
-private import parts.Resolver;
-private import parts.Extent;
+private import extent_resolver.Resolver;
+private import extent_resolver.Extent;
 private import Quest;
 
 class LinePossibility {

@@ -1,10 +1,11 @@
-module parts.Resolver;
+module extent_resolver.Resolver;
 
 private import std.stdio;
 private import std.string;
 private import Quest;
-private import parts.LinePossibility;
-
+private import extent_resolver.LinePossibility;
+private import parts.ExclusiveException;
+private import parts.Position;
 
 class Resolver {
 	private int[][] xHints;
@@ -51,30 +52,36 @@ class Resolver {
 	}
 	public auto verticalCallback(int x) {
 		void _inner(Cell c, int y) {
-if (0 <= x && x < width
-	&& 0 <= y && y < height)
-			if (cells[y][x] != c) {
-				if (cells[y][x] != Cell.Unknown) {
-					throw new Exception(format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
+			if (0 <= x && x < width
+				&& 0 <= y && y < height) {
+				if (cells[y][x] != c) {
+					if (cells[y][x] != Cell.Unknown) {
+						throw new ExclusiveException(
+							Position(x, y),
+							format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
+					}
+					cells[y][x] = c;
+					hPossibility[y].set(c, x);
+					hPossibility[y].checkUp();
 				}
-				cells[y][x] = c;
-				hPossibility[y].set(c, x);
-				hPossibility[y].checkUp();
 			}
 		}
 		return &_inner;
 	}
 	public auto horizontalCallback(int y) {
 		void _inner(Cell c, int x) {
-if (0 <= x && x < width
-	&& 0 <= y && y < height)
-			if (cells[y][x] != c) {
-				if (cells[y][x] != Cell.Unknown) {
-					throw new Exception(format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
+			if (0 <= x && x < width
+				&& 0 <= y && y < height) {
+				if (cells[y][x] != c) {
+					if (cells[y][x] != Cell.Unknown) {
+						throw new ExclusiveException(
+							Position(x, y),
+							format("Put on anothervalue on (%d, %d): %s-> %s", x, y, cells[y][x], c));
+					}
+					cells[y][x] = c;
+					vPossibility[x].set(c, y);
+					vPossibility[x].checkUp();
 				}
-				cells[y][x] = c;
-				vPossibility[x].set(c, y);
-				vPossibility[x].checkUp();
 			}
 		}
 		return &_inner;

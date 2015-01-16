@@ -1,7 +1,7 @@
 private import std.stdio;
 private import std.string;
 private import Quest;
-private import parts.Resolver;
+private import extent_resolver.Resolver;
 
 import std.algorithm;
 

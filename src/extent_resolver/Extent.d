@@ -1,9 +1,9 @@
-module parts.Extent;
+module extent_resolver.Extent;
 
 private import std.string;
 private import std.stdio;
 private import Quest;
-private import parts.LinePossibility;
+private import extent_resolver.LinePossibility;
 
 class Extent {
 	private Cell delegate(int) getCell;
