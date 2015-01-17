@@ -50,6 +50,7 @@ class Resolver {
 			lp.checkUp();
 		}
 	}
+
 	public auto verticalCallback(int x) {
 		void _inner(Cell c, int y) {
 			if (0 <= x && x < width
@@ -86,6 +87,7 @@ class Resolver {
 		}
 		return &_inner;
 	}
+
 	public auto getCellAtX(int x) {
 		Cell _inner(int y) {
 			if (0 <= y && y < height

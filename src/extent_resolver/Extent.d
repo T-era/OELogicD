@@ -4,6 +4,7 @@ private import std.string;
 private import std.stdio;
 private import Quest;
 private import extent_resolver.LinePossibility;
+private import parts.ExclusiveException;
 
 class Extent {
 	private Cell delegate(int) getCell;
@@ -18,8 +19,11 @@ class Extent {
 		this.getCell = getCell;
 		this.length = length;
 		this.prev = prev;
+		if (prev) {
+			prev.setNext(this);
+		}
 	}
-	void setNext(Extent next) {
+	private void setNext(Extent next) {
 		this.next = next;
 	}
 
@@ -27,6 +31,7 @@ class Extent {
 		if (pos > min) {
 			int len = getShorten(pos, +1);
 			min = pos + len;
+			checkLength();
 			if (next !is null)
 				next.shortenMin(min + length + 1);
 		}
@@ -35,6 +40,7 @@ class Extent {
 		if (pos < max) {
 			int len = getShorten(pos, -1);
 			max = pos + len;
+			checkLength();
 			if (prev !is null)
 				prev.shortenMax(max - length - 1);
 		}
@@ -62,11 +68,17 @@ class Extent {
 		} while (more);
 		return temp;
 	}
+	private void checkLength() {
+		if (max - min + 1 < length)
+			throw new ExclusiveException(format(
+				"Length %d(%d)", max - min + 1, length));
+	}
 	public bool contains(int arg) {
 		return min <= arg
 			&& arg <= max;
 	}
 	public bool isFixed() {
+		checkLength();
 		return max - min + 1 == length;
 	}
 	public void fillCenter(void delegate(int) fillCallback) {

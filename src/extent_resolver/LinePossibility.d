@@ -37,7 +37,7 @@ class LinePossibility {
 		}
 		temp = size - 1;
 		for (int i = hints.length - 1; i >= 0; i --) {
-			extents[i].setNext(i == hints.length - 1 ? null : extents[i+1]);
+//			extents[i].setNext(i == hints.length - 1 ? null : extents[i+1]);
 			extents[i].max = temp;
 			temp -= hints[i] + 1;
 		}
