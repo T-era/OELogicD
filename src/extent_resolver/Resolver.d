@@ -45,13 +45,8 @@ class Resolver {
 		void _inner(Cell c, int y) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
-				if (quest.cells[y][x] != c) {
-					if (quest.cells[y][x] != Cell.Unknown) {
-						throw new ExclusiveException(
-							Position(x, y),
-							format("Put on anothervalue on (%d, %d): %s-> %s", x, y, quest.cells[y][x], c));
-					}
-					quest.cells[y][x] = c;
+				if (quest[y, x] != c) {
+					quest[y, x] = c;
 					hPossibility[y].set(c, x);
 					hPossibility[y].checkUp();
 				}
@@ -63,13 +58,8 @@ class Resolver {
 		void _inner(Cell c, int x) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
-				if (quest.cells[y][x] != c) {
-					if (quest.cells[y][x] != Cell.Unknown) {
-						throw new ExclusiveException(
-							Position(x, y),
-							format("Put on anothervalue on (%d, %d): %s-> %s", x, y, quest.cells[y][x], c));
-					}
-					quest.cells[y][x] = c;
+				if (quest[y, x] != c) {
+					quest[y, x] = c;
 					vPossibility[x].set(c, y);
 					vPossibility[x].checkUp();
 				}
@@ -82,7 +72,7 @@ class Resolver {
 		Cell _inner(int y) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
-				return quest.cells[y][x];
+				return quest[y, x];
 			} else {
 				return Cell.Unknown;
 			}
@@ -93,7 +83,7 @@ class Resolver {
 		Cell _inner(int x) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
-				return quest.cells[y][x];
+				return quest[y, x];
 			} else {
 				return Cell.Unknown;
 			}

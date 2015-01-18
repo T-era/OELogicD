@@ -3,13 +3,15 @@ private import std.range;
 import std.conv;
 import std.string;
 import std.stdio;
+private import parts.ExclusiveException;
+private import parts.Position;
 
 class Quest {
 	int[][] vHints;
 	int[][] hHints;
 	int width;
 	int height;
-	Cell[][] cells;
+	private Cell[][] cells;
 
 	this(int[][] vHints, int[][] hHints) {
 		this.vHints = vHints;
@@ -29,22 +31,13 @@ class Quest {
 		}
 	}
 	this(string[] vHints, string[] hHints, string separator=",") {
-		this.vHints = map!(
+		this(
+			map!(
 				str => map!(to!int)(str.split(separator)).array()
-			)(vHints).array();
-		this.hHints = map!(
+			)(vHints).array()
+			, map!(
 				str => map!(to!int)(str.split(separator)).array()
-			)(hHints).array();
-
-		this.width = vHints.length;
-		this.height = hHints.length;
-		this.cells.length = this.height;
-		for (int y = 0; y < this.height; y ++) {
-			cells[y].length = this.width;
-			for (int x = 0; x < this.width; x ++) {
-				cells[y][x] = Cell.Unknown;
-			}
-		}
+			)(hHints).array());
 	}
 
 	private static int sumOf(int[][] args) {
@@ -56,8 +49,22 @@ class Quest {
 		}
 		return sum;
 	}
+
+	Cell opIndex(size_t y, size_t x) {
+		return cells[y][x];
+	}
+	void opIndexAssign(Cell c, size_t y, size_t x) {
+		if (cells[y][x] == c) {
+			// do nothing.
+		} else if (cells[y][x] == Cell.Unknown) {
+			cells[y][x] = c;
+		} else {
+			throw new ExclusiveException(Position(x, y),
+				format("Another value assigned.%s -> %s", cells[y][x], c));
+		}
+	}
+
 	override string toString() {
-		writeln(cells);
 		string str = "";
 		for (int y = 0; y < cells.length; y ++) {
 			for (int x = 0; x < cells[y].length; x ++) {
