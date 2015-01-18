@@ -4,26 +4,24 @@ private import std.algorithm;
 private import std.range;
 private import std.stdio;
 private import std.string;
-private import extent_resolver.Resolver;
 private import extent_resolver.Extent;
+private import parts.Resolver;
 private import parts.ExclusiveException;
 private import Quest;
 
 class LinePossibility {
-	Resolver parent;
-	int[] hints;
-	bool[int] eventDone;
-	Extent[] extents;
-	int size;
-	void delegate(Cell, int) callback;
-	public Cell delegate(int) getCell;
+	private int[] hints;
+	private bool[int] eventDone;
+	private Extent[] extents;
+	private int size;
+	private void delegate(Cell, int) callback;
+	private Cell delegate(int) getCell;
 
-	this(Resolver parent, int size, int[] hints, void delegate(Cell, int) f, Cell delegate(int) getF) {
+	this(int size, int[] hints, void delegate(Cell, int) f, Cell delegate(int) getF) {
 		void mixedF(Cell c, int p) {
 			set(c, p);
 			f(c,p);
 		}
-		this.parent = parent;
 		this.size = size;
 		this.hints = hints;
 		this.callback = &mixedF;

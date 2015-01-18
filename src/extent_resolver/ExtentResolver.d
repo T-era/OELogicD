@@ -1,4 +1,4 @@
-module extent_resolver.Resolver;
+module extent_resolver.ExtentResolver;
 
 private import std.stdio;
 private import std.string;
@@ -6,8 +6,9 @@ private import Quest;
 private import extent_resolver.LinePossibility;
 private import parts.ExclusiveException;
 private import parts.Position;
+private import parts.Resolver;
 
-class Resolver {
+class ExtentResolver : Resolver {
 	private Quest quest;
 	private LinePossibility[] vPossibility;
 	private LinePossibility[] hPossibility;
@@ -18,15 +19,15 @@ class Resolver {
 		vPossibility.length = quest.width;
 		hPossibility.length = quest.height;
 		for (int x = 0; x < quest.width; x ++) {
-			vPossibility[x] = new LinePossibility(this
-				, quest.height
+			vPossibility[x] = new LinePossibility(
+				quest.height
 				, quest.vHints[x]
 				, this.verticalCallback(x)
 				, this.getCellAtX(x));
 		}
 		for (int y = 0; y < quest.height; y ++) {
-			hPossibility[y] = new LinePossibility(this
-				, quest.width
+			hPossibility[y] = new LinePossibility(
+				quest.width
 				, quest.hHints[y]
 				, this.horizontalCallback(y)
 				, this.getCellAtY(y));
@@ -41,7 +42,7 @@ class Resolver {
 		}
 	}
 
-	public auto verticalCallback(int x) {
+	private auto verticalCallback(int x) {
 		void _inner(Cell c, int y) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
@@ -54,7 +55,7 @@ class Resolver {
 		}
 		return &_inner;
 	}
-	public auto horizontalCallback(int y) {
+	private auto horizontalCallback(int y) {
 		void _inner(Cell c, int x) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
@@ -68,7 +69,7 @@ class Resolver {
 		return &_inner;
 	}
 
-	public auto getCellAtX(int x) {
+	private auto getCellAtX(int x) {
 		Cell _inner(int y) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
@@ -79,7 +80,7 @@ class Resolver {
 		}
 		return &_inner;
 	}
-	public auto getCellAtY(int y) {
+	private auto getCellAtY(int y) {
 		Cell _inner(int x) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {

@@ -1,7 +1,7 @@
 private import std.stdio;
 private import std.string;
 private import Quest;
-private import extent_resolver.Resolver;
+private import extent_resolver.ExtentResolver;
 private import std.algorithm;
 
 void main(string[] args) {
@@ -20,7 +20,7 @@ void main(string[] args) {
 		vHints,
 		hHints);
 
-	auto r = new Resolver(q);
+	auto r = new ExtentResolver(q);
 	r.checkUp();
 	writeln(q);
 	//writeln(r);
