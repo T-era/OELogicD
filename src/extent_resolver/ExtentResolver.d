@@ -41,6 +41,12 @@ class ExtentResolver : Resolver {
 			lp.checkUp();
 		}
 	}
+	public void set(int x, int y, Cell c) {
+		hPossibility[y].set(c, x);
+		hPossibility[y].checkUp();
+		vPossibility[x].set(c, y);
+		vPossibility[x].checkUp();
+	}
 
 	private auto verticalCallback(int x) {
 		void _inner(Cell c, int y) {
