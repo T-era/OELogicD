@@ -23,7 +23,7 @@ class ForceResolver {
 			scope Position p = sence.getEasyPoint();
 			try {
 				auto newSence = sence.deepCopy();
-				writeln("try to set ", p);
+//				writeln("try to set ", p);
 				newSence.set(p.x, p.y, Cell.Fill);
 				ForceResolver child = new ForceResolver(newSence);
 				child.checkUp();

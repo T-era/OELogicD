@@ -46,6 +46,13 @@ class LinePossibility {
 		this.extents = extents;
 	}
 
+	bool isChecked(int pos) {
+		if (pos in eventDone) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 	void checkUp() {
 		if (extents.length == 0) {
 			for (int i = 0; i < size; i ++) {

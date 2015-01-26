@@ -78,10 +78,11 @@ class ExtentResolver {
 		void _inner(Cell c, int y) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
-				if (quest[y, x] != c) {
+				LinePossibility lp = hPossibility[y];
+				if (! lp.isChecked(y)) {
 					quest[y, x] = c;
-					hPossibility[y].set(c, x);
-					hPossibility[y].checkUp();
+					lp.set(c, x);
+					lp.checkUp();
 				}
 			}
 		}
@@ -91,10 +92,11 @@ class ExtentResolver {
 		void _inner(Cell c, int x) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
-				if (quest[y, x] != c) {
+				LinePossibility lp = vPossibility[x];
+				if (! lp.isChecked(y)) {
 					quest[y, x] = c;
-					vPossibility[x].set(c, y);
-					vPossibility[x].checkUp();
+					lp.set(c, y);
+					lp.checkUp();
 				}
 			}
 		}
