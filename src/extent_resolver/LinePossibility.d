@@ -22,23 +22,28 @@ class LinePossibility {
 			set(c, p);
 			f(c,p);
 		}
-		this.size = size;
-		this.hints = hints;
-		this.callback = &mixedF;
-		this.getCell = getF;
-		this.extents.length = hints.length;
-
+		Extent[] exts;
+		exts.length = hints.length;
 		int temp = 0;
 		for (int i = 0; i < hints.length; i ++) {
-			extents[i] = new Extent(getF, hints[i], i == 0 ? null : extents[i-1]);
-			extents[i].min = temp;
+			exts[i] = new Extent(getF, hints[i], i == 0 ? null : exts[i-1]);
+			exts[i].min = temp;
 			temp += hints[i] + 1;
 		}
 		temp = size - 1;
 		for (int i = hints.length - 1; i >= 0; i --) {
-			extents[i].max = temp;
+			exts[i].max = temp;
 			temp -= hints[i] + 1;
 		}
+		this(size, hints, exts, &mixedF, getF);
+	}
+	private this(int size, int[] hints, Extent[] extents, void delegate(Cell, int) callback, Cell delegate(int) getCell) {
+		this.size = size;
+		this.hints = hints;
+		this.callback = callback;
+		this.getCell = getCell;
+
+		this.extents = extents;
 	}
 
 	void checkUp() {
@@ -183,6 +188,29 @@ class LinePossibility {
 			}
 		}
 		return hasChange;
+	}
+	public bool done() {
+		foreach (Extent ex; extents) {
+			if (! ex.isFixed()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/* for force resolve */
+	LinePossibility deepCopy(void delegate(Cell, int) callback, Cell delegate(int) getCell) {
+		Extent prev = null;
+		Extent newExtent(Extent origin) {
+			prev = origin.deepCopy(prev);
+			return prev;
+		}
+		Extent[] cp = map!(newExtent)(this.extents).array();
+		return new LinePossibility(size, hints, cp, callback, getCell);
+	}
+	int getScore() {
+		return reduce!((a, b) => a+b)
+			(0, map!(ex => ex.getScore())(extents));
 	}
 
 	public override string toString() {

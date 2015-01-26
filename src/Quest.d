@@ -5,6 +5,7 @@ import std.string;
 import std.stdio;
 private import parts.ExclusiveException;
 private import parts.Position;
+import parts.DeepCopy;
 
 class Quest {
 	int[][] vHints;
@@ -14,21 +15,20 @@ class Quest {
 	private Cell[][] cells;
 
 	this(int[][] vHints, int[][] hHints) {
-		this.vHints = vHints;
-		this.hHints = hHints;
-
-		this.width = vHints.length;
-		this.height = hHints.length;
-		this.cells.length = this.height;
-		for (int y = 0; y < this.height; y ++) {
-			cells[y].length = this.width;
-			for (int x = 0; x < this.width; x ++) {
-				cells[y][x] = Cell.Unknown;
+		int height = hHints.length;
+		int width = vHints.length;
+		Cell[][] cs;
+		cs.length = height;
+		for (int y = 0; y < height; y ++) {
+			cs[y].length = width;
+			for (int x = 0; x < width; x ++) {
+				cs[y][x] = Cell.Unknown;
 			}
 		}
 		if (sumOf(vHints) != sumOf(hHints)) {
 			throw new Exception("??");
 		}
+		this(vHints, hHints, cs);
 	}
 	this(string[] vHints, string[] hHints, string separator=",") {
 		this(
@@ -38,6 +38,14 @@ class Quest {
 			, map!(
 				str => map!(to!int)(str.split(separator)).array()
 			)(hHints).array());
+	}
+	private this(int[][] vHints, int[][] hHints, Cell[][] cells) {
+		this.vHints = vHints;
+		this.hHints = hHints;
+
+		this.width = vHints.length;
+		this.height = hHints.length;
+		this.cells = cells;
 	}
 
 	private static int sumOf(int[][] args) {
@@ -59,9 +67,15 @@ class Quest {
 		} else if (cells[y][x] == Cell.Unknown) {
 			cells[y][x] = c;
 		} else {
-			throw new ExclusiveException(Position(x, y),
+			throw new ExclusiveException(new Position(x, y),
 				format("Another value assigned.%s -> %s", cells[y][x], c));
 		}
+	}
+
+	Quest copy() {
+		return new Quest(this.vHints
+			, this.hHints
+			, deepCopy!(Cell[])(this.cells));
 	}
 
 	override string toString() {

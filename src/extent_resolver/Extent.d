@@ -93,6 +93,20 @@ class Extent {
 			}
 		}
 	}
+
+	/* for force resolve */
+	Extent deepCopy(Extent cpPrev) {
+		Extent cp = new Extent(this.getCell, this.length, cpPrev);
+		cp.min = this.min;
+		cp.max = this.max;
+		return cp;
+	}
+	int getScore() {
+		// 0-...
+		return max - min + 1 - length;
+	}
+
+
 	public override string toString() {
 		return format("%d-%d@%d", min, max, length);
 	}

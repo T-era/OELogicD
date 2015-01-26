@@ -1,5 +1,7 @@
 module extent_resolver.ExtentResolver;
 
+private import std.algorithm;
+private import std.range;
 private import std.stdio;
 private import std.string;
 private import Quest;
@@ -8,30 +10,48 @@ private import parts.ExclusiveException;
 private import parts.Position;
 private import parts.Resolver;
 
-class ExtentResolver : Resolver {
-	private Quest quest;
+class ExtentResolver {
+	public Quest quest;
 	private LinePossibility[] vPossibility;
 	private LinePossibility[] hPossibility;
 
 	this(Quest quest) {
-		this.quest = quest;
-
-		vPossibility.length = quest.width;
-		hPossibility.length = quest.height;
+		LinePossibility[] vp;
+		vp.length = quest.width;
+		LinePossibility[] hp;
+		hp.length = quest.height;
 		for (int x = 0; x < quest.width; x ++) {
-			vPossibility[x] = new LinePossibility(
+			vp[x] = new LinePossibility(
 				quest.height
 				, quest.vHints[x]
 				, this.verticalCallback(x)
 				, this.getCellAtX(x));
 		}
 		for (int y = 0; y < quest.height; y ++) {
-			hPossibility[y] = new LinePossibility(
+			hp[y] = new LinePossibility(
 				quest.width
 				, quest.hHints[y]
 				, this.horizontalCallback(y)
 				, this.getCellAtY(y));
 		}
+		this.quest = quest;
+		this.vPossibility = vp;
+		this.hPossibility = hp;
+	}
+	private this(Quest quest, LinePossibility[] originVPossibility, LinePossibility[] originHPossibility) {
+		this.quest = quest.copy();
+		int x = 0;
+		int y = 0;
+		this.vPossibility = map!(
+			item => item.deepCopy(
+				this.verticalCallback(x),
+				this.getCellAtX(x++)
+			))(originVPossibility).array();
+		this.hPossibility = map!(
+			item => item.deepCopy(
+				this.horizontalCallback(y),
+				this.getCellAtY(y++)
+			))(originHPossibility).array();
 	}
 	public void checkUp() {
 		foreach(LinePossibility lp; vPossibility) {
@@ -42,10 +62,16 @@ class ExtentResolver : Resolver {
 		}
 	}
 	public void set(int x, int y, Cell c) {
-		hPossibility[y].set(c, x);
-		hPossibility[y].checkUp();
-		vPossibility[x].set(c, y);
-		vPossibility[x].checkUp();
+		if (quest[y, x] == Cell.Unknown) {
+			quest[y, x] = c;
+			hPossibility[y].set(c, x);
+			vPossibility[x].set(c, y);
+			hPossibility[y].checkUp();
+			vPossibility[x].checkUp();
+		} else {
+			throw new ExclusiveException(x, y, 
+				format("%s -> %s", quest[y, x], c));
+		}
 	}
 
 	private auto verticalCallback(int x) {
@@ -96,6 +122,48 @@ class ExtentResolver : Resolver {
 			}
 		}
 		return &_inner;
+	}
+	public bool done() {
+		foreach (LinePossibility lp; vPossibility) {
+			if (!lp.done()) {
+				return false;
+			}
+		}
+		foreach (LinePossibility lp; hPossibility) {
+			if (!lp.done()) {
+				throw new Exception("??");
+			}
+		}
+		return true;
+	}
+
+	/* for force resolve */
+	ExtentResolver deepCopy() {
+		return new ExtentResolver(this.quest
+			, this.vPossibility
+			, this.hPossibility);
+	}
+	Position getEasyPoint() {
+		// TODO
+		for (int y = 0; y < quest.height; y ++) {
+			for (int x = 0; x < quest.width; x ++) {
+				if (quest[y, x] == Cell.Unknown) {
+					return new Position(x,y);
+				}
+			}
+		}
+		foreach (LinePossibility lp; vPossibility) {
+			if (!lp.done()) {
+				writeln(lp);
+			}
+		}
+		foreach (LinePossibility lp; hPossibility) {
+			if (!lp.done()) {
+				writeln(lp);
+			}
+		}
+//		writeln(quest);
+		throw new Exception(format("done"));
 	}
 
 	override string toString() {

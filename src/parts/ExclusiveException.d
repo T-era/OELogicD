@@ -19,6 +19,6 @@ class ExclusiveException : Exception {
 		this.y = y;
 	}
 	this(Position at, string message="") {
-		this(at[0], at[1], message);
+		this(at.x, at.y, message);
 	}
 }
