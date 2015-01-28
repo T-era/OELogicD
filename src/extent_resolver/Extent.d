@@ -95,8 +95,8 @@ class Extent {
 	}
 
 	/* for force resolve */
-	Extent deepCopy(Extent cpPrev) {
-		Extent cp = new Extent(this.getCell, this.length, cpPrev);
+	Extent deepCopy(Cell delegate(int) getCell, Extent cpPrev) {
+		Extent cp = new Extent(getCell, this.length, cpPrev);
 		cp.min = this.min;
 		cp.max = this.max;
 		return cp;
@@ -110,4 +110,84 @@ class Extent {
 	public override string toString() {
 		return format("%d-%d@%d", min, max, length);
 	}
+}
+
+
+unittest {
+	bool contains(T)(T[] list, T arg) {
+		foreach (item; list) {
+			if (item == arg) return true;
+		}
+		return false;
+	}
+	void testFillCenter() {
+		Extent ext = new Extent(null, 5, null);
+		ext.min = 1;
+		ext.max = 7;
+		void callback(int arg) {
+			assert(contains([3,4,5], arg));
+		}
+		ext.fillCenter(&callback);
+	}
+	void testShorten() {
+		Cell[] cells = [Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty
+			, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown
+			, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill];
+		Cell getCell(int pos) {
+			if (pos < 0 || pos >= cells.length)
+				return Cell.Empty;
+			return cells[pos];
+		}
+		void testGetShorten() {
+			Extent ext = new Extent(&getCell, 3, null);
+			ext.max = cells.length;
+			ext.min = 0;
+			assert(0 == ext.getShorten(0, 1)); // where len3 block can be in [X???_???????_???X] ?
+			assert(4 == ext.getShorten(1, 1)); // where len3 block can be in [X???_???????_???X] ?(but more than @1)
+			assert(0 == ext.getShorten(16, -1)); // where len3 block can be in [X???_???????_???X] ?
+			assert(-4 == ext.getShorten(15, -1)); // where len3 block can be in [X???_???????_???X] ?(but less than @7)
+		}
+		void testShortenChain() {
+			Extent ext1 = new Extent(&getCell, 3, null);
+			Extent ext2 = new Extent(&getCell, 3, ext1);
+			Extent ext3 = new Extent(&getCell, 3, ext2);
+			ext1.max = cells.length - 1;
+			ext1.min = 0;
+			ext2.max = cells.length - 1;
+			ext2.min = 0;
+			ext3.max = cells.length - 1;
+			ext3.min = 0;
+			ext1.shortenMin(1);
+			assert(5 == ext1.min); // smoke
+			assert(9 == ext2.min); // chain to next
+			assert(14 == ext3.min); // chain to next after next
+			ext1.max = cells.length - 1;
+			ext1.min = 0;
+			ext2.max = cells.length - 1;
+			ext2.min = 0;
+			ext3.max = cells.length - 1;
+			ext3.min = 0;
+			ext3.shortenMax(cells.length - 2);
+			assert(11 == ext3.max); // smoke
+			assert(7 == ext2.max); // chain to prev
+			assert(2 == ext1.max); // chain to prev before prev
+		}
+		void testDeepCopy() {
+			Cell getCell1(int pos) { return Cell.Unknown; }
+			Cell getCell2(int pos) { return Cell.Unknown; }
+			Extent exOriginParent = new Extent(null, 1, null);
+			Extent exCopyParent = new Extent(null, 1, null);
+			Extent exOrigin = new Extent(&getCell1, 1, exOriginParent);
+			Extent exCopy = exOrigin.deepCopy(&getCell2, exCopyParent); // TODO getCell
+			assert(exOrigin.min == exCopy.min);
+			assert(exOrigin.max == exCopy.max);
+			assert(exOrigin.length == exCopy.length);
+			assert(exOrigin.getCell != exCopy.getCell);
+		}
+		testGetShorten();
+		testShortenChain();
+		testDeepCopy();
+	}
+	testFillCenter();
+	testShorten();
 }

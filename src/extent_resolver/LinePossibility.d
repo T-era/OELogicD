@@ -35,15 +35,21 @@ class LinePossibility {
 			exts[i].max = temp;
 			temp -= hints[i] + 1;
 		}
-		this(size, hints, exts, &mixedF, getF);
+		bool[int] ed;
+		this(size, hints, exts, ed, &mixedF, getF);
 	}
-	private this(int size, int[] hints, Extent[] extents, void delegate(Cell, int) callback, Cell delegate(int) getCell) {
+
+	/*
+	 Constructor for copy.
+	 */
+	private this(int size, int[] hints, Extent[] extents, bool[int] eventDone, void delegate(Cell, int) callback, Cell delegate(int) getCell) {
 		this.size = size;
 		this.hints = hints;
 		this.callback = callback;
 		this.getCell = getCell;
 
 		this.extents = extents;
+		this.eventDone = eventDone;
 	}
 
 	bool isChecked(int pos) {
@@ -209,11 +215,15 @@ class LinePossibility {
 	LinePossibility deepCopy(void delegate(Cell, int) callback, Cell delegate(int) getCell) {
 		Extent prev = null;
 		Extent newExtent(Extent origin) {
-			prev = origin.deepCopy(prev);
+			prev = origin.deepCopy(getCell, prev);
 			return prev;
 		}
 		Extent[] cp = map!(newExtent)(this.extents).array();
-		return new LinePossibility(size, hints, cp, callback, getCell);
+		bool[int] ed;
+		foreach (key, val; this.eventDone) {
+			ed[key] = val;
+		}
+		return new LinePossibility(size, hints, cp, ed, callback, getCell);
 	}
 	int getScore() {
 		return reduce!((a, b) => a+b)
