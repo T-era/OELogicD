@@ -59,7 +59,10 @@ class LinePossibility {
 			return false;
 		}
 	}
-	void checkUp() {
+	public void checkUp() {
+		checkUpFunc(this.extents, this.size, this.callback);
+	}
+	private static void checkUpFunc(Extent[] extents, int size, void delegate(Cell, int) callback) {
 		if (extents.length == 0) {
 			for (int i = 0; i < size; i ++) {
 				callback(Cell.Empty, i);
@@ -84,8 +87,51 @@ class LinePossibility {
 			}
 		}
 	}
+	unittest {
+		Extent[] testExtentList(Cell delegate(int) getCell, int[][] fromToList) {
+			Extent prev = null;
+			Extent[] list = [];
+			foreach (int[] fromTo; fromToList) {
+				Extent obj = new Extent(getCell, fromTo[0], prev);
+				obj.min = fromTo[1];
+				obj.max = fromTo[2];
+				prev = obj;
+				list ~= obj;
+			}
+			return list;
+		}
+		auto callbackForTest(ref Cell[int] stock) {
+			return (Cell c, int pos) {
+				stock[pos] = c;
+			};
+		}
+		{
+			Cell[int] stock;
+			checkUpFunc(testExtentList(null, [[1,0,3]]), 4, callbackForTest(stock));
+			assert(stock.length == 0);
+			checkUpFunc(testExtentList(null, [[1,1,2]]), 4, callbackForTest(stock));
+			assert(stock == [0:Cell.Empty, 3:Cell.Empty]);
+		}
+		{
+			Cell[int] stock;
+			checkUpFunc(testExtentList(null, [[2,1,3]]), 5, callbackForTest(stock));
+			assert(stock == [2:Cell.Fill, 0:Cell.Empty, 4:Cell.Empty]);
+		}
+		{
+			Cell[int] stock;
+			checkUpFunc(testExtentList(null, [[2,1,3], [2,5,8]]), 9, callbackForTest(stock));
+			assert(stock == [2:Cell.Fill, 0:Cell.Empty, 4:Cell.Empty]);
+		}
+	}
 
+	/**
+	 セルを設定します。その結果として、各Extentは縮小する可能性があります。
+	 各Extentが縮小した場合、checkUpをおこないます。
+	 設定のキャンセルはできません。(Unknown指定はエラー仕様外)
+	 Questに対して矛盾が検知されると、ExclusiveException例外が送出します。
+	**/
 	void set(Cell cell, int pos) {
+		assert(cell != Cell.Unknown);
 		if (pos in eventDone) {
 			return;
 		} else {
@@ -97,11 +143,60 @@ class LinePossibility {
 		} else if (cell == Cell.Fill) {
 			hasChange |= setFill(pos);
 		} else {
-			throw new Exception("??");
+			assert(false, "Invalid cell setting.");
 		}
 		if (hasChange) {
 			checkUp();
 		}
+	}
+	unittest {
+		/*
+		 テスト用の状況設定は以下。
+		 ??????_???X???
+		 ----2----
+		        ---4---
+		*/
+		Cell[] cells = [Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown];
+		Cell getCell(int pos) {
+			return cells[pos];
+		}
+		LinePossibility initTest(void delegate(Cell, int) callback, Extent[] extents) {
+			bool[int] eventDone;
+			return new LinePossibility(
+				cells.length,
+				[2,4],
+				extents,
+				eventDone,
+				callback,
+				&getCell);
+		}
+		Extent[] testExtentList(Cell delegate(int) getCell, int[][] fromToList) {
+			Extent prev = null;
+			Extent[] list = [];
+			foreach (int[] fromTo; fromToList) {
+				Extent obj = new Extent(getCell, fromTo[0], prev);
+				obj.min = fromTo[1];
+				obj.max = fromTo[2];
+				prev = obj;
+				list ~= obj;
+			}
+			return list;
+		}
+
+		Cell[int] called;
+		void myCallBack(Cell c, int pos) {
+			called[pos] = c;
+		}
+		Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
+		auto lp = initTest(&myCallBack, extents);
+		lp.set(Cell.Fill, 9);
+		writeln(called);
+		assert(called == [9: Cell.Fill, 13: Cell.Empty] || called == [9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty]); // Fill@10 はコールバックされてもされなくてもOK(決定済み)
+		writeln(extents);
+		assert(extents[0].min == 0);
+		assert(extents[0].max == 5);
+		assert(extents[1].min == 7);
+		assert(extents[1].max == 12);
 	}
 	private bool setEmpty(int pos) {
 		bool ret = false;
@@ -112,6 +207,7 @@ class LinePossibility {
 				ret = true;
 			}
 			if (ex.max - pos < ex.length) {
+				writeln(ex.max - pos < ex.length);
 				ex.shortenMax(pos - 1);
 				ret = true;
 			}

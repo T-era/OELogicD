@@ -27,9 +27,9 @@ class ForceResolver {
 				newSence.set(p.x, p.y, Cell.Fill);
 				ForceResolver child = new ForceResolver(newSence);
 				child.checkUp();
-				writeln(newSence.quest);
-				writeln(newSence);
-				writeln();
+//				writeln(newSence.quest);
+//				writeln(newSence);
+//				writeln();
 			} catch (ExclusiveException ex) {
 				this.sence.set(p.x, p.y, Cell.Empty);
 				checkUp();

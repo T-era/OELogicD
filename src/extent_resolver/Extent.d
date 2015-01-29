@@ -68,68 +68,7 @@ class Extent {
 		} while (more);
 		return temp;
 	}
-	private void checkLength() {
-		if (max - min + 1 < length)
-			throw new ExclusiveException(format(
-				"Length %d(%d)", max - min + 1, length));
-	}
-	public bool contains(int arg) {
-		return min <= arg
-			&& arg <= max;
-	}
-	public bool isFixed() {
-		checkLength();
-		return max - min + 1 == length;
-	}
-	public void fillCenter(void delegate(int) fillCallback) {
-		int d = length * 2 - (max - min + 1);
-		if (d <= 0) {
-			return;
-		} else {
-			int fillMin = max - length + 1;
-			int fillMax = min + length - 1;
-			for (int i = fillMin; i <= fillMax; i ++) {
-				fillCallback(i);
-			}
-		}
-	}
-
-	/* for force resolve */
-	Extent deepCopy(Cell delegate(int) getCell, Extent cpPrev) {
-		Extent cp = new Extent(getCell, this.length, cpPrev);
-		cp.min = this.min;
-		cp.max = this.max;
-		return cp;
-	}
-	int getScore() {
-		// 0-...
-		return max - min + 1 - length;
-	}
-
-
-	public override string toString() {
-		return format("%d-%d@%d", min, max, length);
-	}
-}
-
-
-unittest {
-	bool contains(T)(T[] list, T arg) {
-		foreach (item; list) {
-			if (item == arg) return true;
-		}
-		return false;
-	}
-	void testFillCenter() {
-		Extent ext = new Extent(null, 5, null);
-		ext.min = 1;
-		ext.max = 7;
-		void callback(int arg) {
-			assert(contains([3,4,5], arg));
-		}
-		ext.fillCenter(&callback);
-	}
-	void testShorten() {
+	unittest {
 		Cell[] cells = [Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty
 			, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown
 			, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill];
@@ -172,22 +111,72 @@ unittest {
 			assert(7 == ext2.max); // chain to prev
 			assert(2 == ext1.max); // chain to prev before prev
 		}
-		void testDeepCopy() {
-			Cell getCell1(int pos) { return Cell.Unknown; }
-			Cell getCell2(int pos) { return Cell.Unknown; }
-			Extent exOriginParent = new Extent(null, 1, null);
-			Extent exCopyParent = new Extent(null, 1, null);
-			Extent exOrigin = new Extent(&getCell1, 1, exOriginParent);
-			Extent exCopy = exOrigin.deepCopy(&getCell2, exCopyParent); // TODO getCell
-			assert(exOrigin.min == exCopy.min);
-			assert(exOrigin.max == exCopy.max);
-			assert(exOrigin.length == exCopy.length);
-			assert(exOrigin.getCell != exCopy.getCell);
-		}
 		testGetShorten();
 		testShortenChain();
-		testDeepCopy();
 	}
-	testFillCenter();
-	testShorten();
+
+	private void checkLength() {
+		if (max - min + 1 < length)
+			throw new ExclusiveException(format(
+				"Length %d(%d)", max - min + 1, length));
+	}
+	public bool contains(int arg) {
+		return min <= arg
+			&& arg <= max;
+	}
+	public bool isFixed() {
+		checkLength();
+		return max - min + 1 == length;
+	}
+	public void fillCenter(void delegate(int) fillCallback) {
+		int d = length * 2 - (max - min + 1);
+		if (d <= 0) {
+			return;
+		} else {
+			int fillMin = max - length + 1;
+			int fillMax = min + length - 1;
+			for (int i = fillMin; i <= fillMax; i ++) {
+				fillCallback(i);
+			}
+		}
+	}
+	unittest {
+		Extent ext = new Extent(null, 5, null);
+		ext.min = 1;
+		ext.max = 7;
+		void callback(int arg) {
+			assert(arg == 3 || arg == 4 || arg == 5);
+		}
+		ext.fillCenter(&callback);
+	}
+
+	/* for force resolve */
+	Extent deepCopy(Cell delegate(int) getCell, Extent cpPrev) {
+		Extent cp = new Extent(getCell, this.length, cpPrev);
+		cp.min = this.min;
+		cp.max = this.max;
+		return cp;
+	}
+	unittest {
+		Cell getCell1(int pos) { return Cell.Unknown; }
+		Cell getCell2(int pos) { return Cell.Unknown; }
+		Extent exOriginParent = new Extent(null, 1, null);
+		Extent exCopyParent = new Extent(null, 1, null);
+		Extent exOrigin = new Extent(&getCell1, 1, exOriginParent);
+		Extent exCopy = exOrigin.deepCopy(&getCell2, exCopyParent); // TODO getCell
+		assert(exOrigin.min == exCopy.min);
+		assert(exOrigin.max == exCopy.max);
+		assert(exOrigin.length == exCopy.length);
+		assert(exOrigin.getCell != exCopy.getCell);
+	}
+
+	int getScore() {
+		// 0-...
+		return max - min + 1 - length;
+	}
+
+
+	public override string toString() {
+		return format("%d-%d@%d", min, max, length);
+	}
 }
