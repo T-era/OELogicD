@@ -190,9 +190,10 @@ class LinePossibility {
 		Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
 		auto lp = initTest(&myCallBack, extents);
 		lp.set(Cell.Fill, 9);
-		writeln(called);
-		assert(called == [9: Cell.Fill, 13: Cell.Empty] || called == [9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty]); // Fill@10 はコールバックされてもされなくてもOK(決定済み)
-		writeln(extents);
+		assert(called == [9: Cell.Fill, 13: Cell.Empty]
+			|| called == [9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
+			|| called == [6: Cell.Empty, 9: Cell.Fill, 13: Cell.Empty] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
+			|| called == [6: Cell.Empty, 9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty]);
 		assert(extents[0].min == 0);
 		assert(extents[0].max == 5);
 		assert(extents[1].min == 7);
@@ -218,18 +219,20 @@ class LinePossibility {
 		bool ret = false;
 		auto neighbor1List = filter!(ex => ex.min - 1 == pos)(extents);
 		foreach (Extent ex; neighbor1List) {
-			ex.min ++;
-			while (getCell(ex.min-1) == Cell.Fill) {
-				ex.min ++;
-			}
+//			ex.min ++;
+			ex.shortenMin(ex.min + 1);
+//			while (getCell(ex.min-1) == Cell.Fill) {
+//				ex.min ++;
+//			}
 			ret = true;
 		}
 		auto neighbor2List = filter!(ex => ex.max + 1 == pos)(extents);
 		foreach (Extent ex; neighbor2List) {
-			ex.max --;
-			while (getCell(ex.min+1) == Cell.Fill) {
-				ex.min --;
-			}
+//			ex.max --;
+			ex.shortenMax(ex.max - 1);
+//			while (getCell(ex.min+1) == Cell.Fill) {
+//				ex.min --;
+//			}
 			ret = true;
 		}
 		ret |= _setFill_checkContains(pos);
