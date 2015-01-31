@@ -5,26 +5,20 @@ import std.string;
 import std.stdio;
 private import parts.ExclusiveException;
 private import parts.Position;
-import parts.DeepCopy;
+private import parts.CompList;
 
 class Quest {
 	int[][] vHints;
 	int[][] hHints;
 	int width;
 	int height;
-	private Cell[][] cells;
+	Cell[][] cells;
 
 	this(int[][] vHints, int[][] hHints) {
 		int height = hHints.length;
 		int width = vHints.length;
-		Cell[][] cs;
-		cs.length = height;
-		for (int y = 0; y < height; y ++) {
-			cs[y].length = width;
-			for (int x = 0; x < width; x ++) {
-				cs[y][x] = Cell.Unknown;
-			}
-		}
+		Cell[][] cs = new Cell[][](height, width);
+
 		if (sumOf(vHints) != sumOf(hHints)) {
 			throw new Exception("??");
 		}
@@ -78,32 +72,33 @@ class Quest {
 			, deepCopy!(Cell[])(this.cells));
 	}
 
+	T forEachCell(T)(T delegate(Cell) map, T delegate(T, T) reduce, T delegate(T, T) ln) {
+		return fetchDoubleList!(Cell, string)(
+			this.cells,
+			map,
+			reduce,
+			ln);
+	}
+
 	override string toString() {
-		string str = "";
-		for (int y = 0; y < cells.length; y ++) {
-			for (int x = 0; x < cells[y].length; x ++) {
-				switch(cells[y][x]) {
+		return this.forEachCell!(string)(
+			delegate(c) {
+				final switch(c) {
 					case Cell.Unknown:
-						str ~= ".";
-						break;
+						return ".";
 					case Cell.Empty:
-						str ~= "X";
-						break;
+						return "X";
 					case Cell.Fill:
-						str ~= " ";
-						break;
-					default:
-						throw new Exception("??");
+						return " ";
 				}
 			}
-			str ~= "\n";
-		}
-		return str;
+			, (a, b) => b ~ a
+			, (t1, t2) => t2 ~ "\n" ~ t1);
 	}
 }
 
 enum Cell {
-	Unknown,
+	Unknown, // Must be initial value.
 	Fill,
 	Empty
 }

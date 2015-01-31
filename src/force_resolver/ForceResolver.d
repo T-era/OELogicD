@@ -6,10 +6,11 @@ private import Quest;
 private import parts.ExclusiveException;
 private import parts.Position;
 private import extent_resolver.ExtentResolver;
-private import parts.DeepCopy;
+private import parts.CompList;
 
 class ForceResolver {
 	private ExtentResolver sence;
+	bool[Position] done;
 
 	this(ExtentResolver another) {
 		this.sence = another;
@@ -21,15 +22,16 @@ class ForceResolver {
 			return;
 		} else {
 			scope Position p = sence.getEasyPoint();
+			if (p in done) throw new Exception("!?");
+
+			done[p] = true;
 			try {
 				auto newSence = sence.deepCopy();
-//				writeln("try to set ", p);
 				newSence.set(p.x, p.y, Cell.Fill);
 				ForceResolver child = new ForceResolver(newSence);
 				child.checkUp();
-//				writeln(newSence.quest);
-//				writeln(newSence);
-//				writeln();
+
+				copyInto!(Cell[])(newSence.quest.cells, sence.quest.cells);
 			} catch (ExclusiveException ex) {
 				this.sence.set(p.x, p.y, Cell.Empty);
 				checkUp();

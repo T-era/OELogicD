@@ -8,6 +8,7 @@ private import extent_resolver.Extent;
 private import parts.Resolver;
 private import parts.ExclusiveException;
 private import Quest;
+private import parts.CompList;
 
 class LinePossibility {
 	private int[] hints;
@@ -156,11 +157,8 @@ class LinePossibility {
 		 ----2----
 		        ---4---
 		*/
-		Cell[] cells = [Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown];
-		Cell getCell(int pos) {
-			return cells[pos];
-		}
-		LinePossibility initTest(void delegate(Cell, int) callback, Extent[] extents) {
+		Cell[] init = [Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown];
+		LinePossibility initTest(Cell[] cells, void delegate(Cell, int) callback, Extent[] extents, Cell delegate(int) getCell) {
 			bool[int] eventDone;
 			return new LinePossibility(
 				cells.length,
@@ -168,7 +166,7 @@ class LinePossibility {
 				extents,
 				eventDone,
 				callback,
-				&getCell);
+				getCell);
 		}
 		Extent[] testExtentList(Cell delegate(int) getCell, int[][] fromToList) {
 			Extent prev = null;
@@ -182,22 +180,86 @@ class LinePossibility {
 			}
 			return list;
 		}
-
-		Cell[int] called;
+		Cell[] cells;
+		Cell getCell(int pos) {
+			return cells[pos];
+		}
+		Cell[int] called = null;
 		void myCallBack(Cell c, int pos) {
 			called[pos] = c;
 		}
-		Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
-		auto lp = initTest(&myCallBack, extents);
-		lp.set(Cell.Fill, 9);
-		assert(called == [9: Cell.Fill, 13: Cell.Empty]
-			|| called == [9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
-			|| called == [6: Cell.Empty, 9: Cell.Fill, 13: Cell.Empty] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
-			|| called == [6: Cell.Empty, 9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty]);
-		assert(extents[0].min == 0);
-		assert(extents[0].max == 5);
-		assert(extents[1].min == 7);
-		assert(extents[1].max == 12);
+		testSetFill: {
+			cells = .deepCopy!(Cell)(init);
+			called = null;
+
+			Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
+			auto lp = initTest(cells, &myCallBack, extents, &getCell);
+			lp.set(Cell.Fill, 9);
+			assert(called == [9: Cell.Fill, 13: Cell.Empty]
+				|| called == [9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
+				|| called == [6: Cell.Empty, 9: Cell.Fill, 13: Cell.Empty] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
+				|| called == [6: Cell.Empty, 9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty]);
+			assert(extents[0].min == 0);
+			assert(extents[0].max == 5);
+			assert(extents[1].min == 7);
+			assert(extents[1].max == 12);
+		}
+		testSetEmpty: {
+			cells = .deepCopy!(Cell)(init);
+			called = null;
+
+			Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
+			auto lp = initTest(cells, &myCallBack, extents, &getCell);
+			lp.set(Cell.Empty, 8);
+			assert(called == [7: Cell.Empty, 8: Cell.Empty, 11: Cell.Fill, 12: Cell.Fill]
+				|| called == [6: Cell.Empty, 7: Cell.Empty, 8: Cell.Empty, 11: Cell.Fill, 12: Cell.Fill] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
+				|| called == [7: Cell.Empty, 8: Cell.Empty, 10: Cell.Fill, 11: Cell.Fill, 12: Cell.Fill] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
+				|| called == [6: Cell.Empty, 7: Cell.Empty, 8: Cell.Empty, 10: Cell.Fill, 11: Cell.Fill, 12: Cell.Fill]);
+			assert(extents[0].min == 0);
+			assert(extents[0].max == 5);
+			assert(extents[1].min == 9);
+			assert(extents[1].max == 13);
+		}
+		testSet3: {
+			/*
+			 テスト用の状況設定は以下。
+			     X
+			 ??X????X???
+			 -1-
+			   --1---
+			       -2--
+			*/
+			cells = [Cell.Unknown, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown];
+			void _myCallBack1(Cell c, int pos) {
+				cells[pos] = c;
+			}
+
+			Extent[] extents = testExtentList(&getCell, [[1,0,2],[1,2,7],[2,6,10]]);
+			auto lp = initTest(cells, &_myCallBack1, extents, &getCell);
+			lp.set(Cell.Fill, 4);
+			assert(cells == [Cell.Empty, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Empty, Cell.Empty]);
+		}
+		testSet4: {
+			/*
+			 テスト用の状況設定は以下。
+			  _  
+			 ??X_???
+			 -1-
+			  ---2--
+			*/
+			cells = [Cell.Unknown, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown];
+			void _myCallBack2(Cell c, int pos) {
+				cells[pos] = c;
+			}
+
+			Extent[] extents = testExtentList(&getCell, [[1,0,2],[2,1,6]]);
+			auto lp = initTest(cells, &_myCallBack2, extents, &getCell);
+			lp.set(Cell.Empty, 1);
+			lp.checkUp();
+			writeln(cells);
+			writeln(extents);
+			assert(cells == [Cell.Empty, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Unknown, Cell.Fill, Cell.Unknown]);
+		}
 	}
 	private bool setEmpty(int pos) {
 		bool ret = false;
@@ -208,7 +270,6 @@ class LinePossibility {
 				ret = true;
 			}
 			if (ex.max - pos < ex.length) {
-				writeln(ex.max - pos < ex.length);
 				ex.shortenMax(pos - 1);
 				ret = true;
 			}
@@ -219,20 +280,12 @@ class LinePossibility {
 		bool ret = false;
 		auto neighbor1List = filter!(ex => ex.min - 1 == pos)(extents);
 		foreach (Extent ex; neighbor1List) {
-//			ex.min ++;
 			ex.shortenMin(ex.min + 1);
-//			while (getCell(ex.min-1) == Cell.Fill) {
-//				ex.min ++;
-//			}
 			ret = true;
 		}
 		auto neighbor2List = filter!(ex => ex.max + 1 == pos)(extents);
 		foreach (Extent ex; neighbor2List) {
-//			ex.max --;
 			ex.shortenMax(ex.max - 1);
-//			while (getCell(ex.min+1) == Cell.Fill) {
-//				ex.min --;
-//			}
 			ret = true;
 		}
 		ret |= _setFill_checkContains(pos);
@@ -324,6 +377,7 @@ class LinePossibility {
 		}
 		return new LinePossibility(size, hints, cp, ed, callback, getCell);
 	}
+
 	int getScore() {
 		return reduce!((a, b) => a+b)
 			(0, map!(ex => ex.getScore())(extents));
