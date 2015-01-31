@@ -9,6 +9,7 @@ private import parts.Resolver;
 private import parts.ExclusiveException;
 private import Quest;
 private import parts.CompList;
+private import extent_resolver.Shortage;
 
 class LinePossibility {
 	private int[] hints;
@@ -127,7 +128,7 @@ class LinePossibility {
 
 	/**
 	 セルを設定します。その結果として、各Extentは縮小する可能性があります。
-	 各Extentが縮小した場合、checkUpをおこないます。
+	 いずれかのExtentが縮小した場合、checkUpをおこないます。
 	 設定のキャンセルはできません。(Unknown指定はエラー仕様外)
 	 Questに対して矛盾が検知されると、ExclusiveException例外が送出します。
 	**/
@@ -138,15 +139,16 @@ class LinePossibility {
 		} else {
 			eventDone[pos] = true;
 		}
+		Shortage shortage = new Shortage();
 		bool hasChange = false;
 		if (cell == Cell.Empty) {
-			hasChange |= setEmpty(pos);
+			setEmpty(pos, shortage);
 		} else if (cell == Cell.Fill) {
-			hasChange |= setFill(pos);
+			setFill(pos, shortage);
 		} else {
 			assert(false, "Invalid cell setting.");
 		}
-		if (hasChange) {
+		if (shortage.HasChange) {
 			checkUp();
 		}
 	}
@@ -261,72 +263,53 @@ class LinePossibility {
 			assert(cells == [Cell.Empty, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Unknown, Cell.Fill, Cell.Unknown]);
 		}
 	}
-	private bool setEmpty(int pos) {
-		bool ret = false;
+	private void setEmpty(int pos, Shortage shortage) {
 		auto containsList = filter!(ex => ex.contains(pos))(extents);
 		foreach(Extent ex; containsList) {
 			if  (pos - ex.min < ex.length) {
+				int now  = ex.min;
 				ex.shortenMin(pos + 1);
-				ret = true;
+				shortage.addRange(now, ex.min, getCell);
 			}
 			if (ex.max - pos < ex.length) {
+				int now = ex.max;
 				ex.shortenMax(pos - 1);
-				ret = true;
+				shortage.addRange(ex.max, now, getCell);
 			}
 		}
-		return ret;
 	}
-	private bool setFill(int pos) {
-		bool ret = false;
+	private void setFill(int pos, Shortage shortage) {
 		auto neighbor1List = filter!(ex => ex.min - 1 == pos)(extents);
 		foreach (Extent ex; neighbor1List) {
+			int now = ex.min;
 			ex.shortenMin(ex.min + 1);
-			ret = true;
+			shortage.addRange(now, ex.min, getCell);
 		}
 		auto neighbor2List = filter!(ex => ex.max + 1 == pos)(extents);
 		foreach (Extent ex; neighbor2List) {
+			int now = ex.max;
 			ex.shortenMax(ex.max - 1);
-			ret = true;
+			shortage.addRange(ex.max, now, getCell);
 		}
-		ret |= _setFill_checkContains(pos);
-		return ret;
 	}
-	private bool _setFill_checkContains(int pos) {
-		bool ret = false;
+	private bool _checkFillArround(int pos, Shortage s) {
 		auto containsList = filter!(ex => ex.contains(pos))(extents).array();
 		if (containsList.length != 0) {
 			// first and last one shorten.
-			auto cFirst = containsList[0];
-			auto cLast = containsList[$-1];
-
-			int newMax = pos + cFirst.length - 1;
-			int newMin = pos - cLast.length + 1;
-			for (int i = pos+1; i <= newMax; i ++) {
-				if (getCell(i) == Cell.Empty) {
-					newMax = i - 1;
-					break;
-				}
+			{
+				auto cFirst = containsList[0];
+				int newMax = pos + cFirst.length - 1;
+				int curMax = cFirst.max;
+				cFirst.shortenMax(newMax);
+				shortage.addRange(cFirst.max, curMax);
 			}
-			for (int i = pos-1; i >= newMin; i --) {
-				if (getCell(i) == Cell.Empty) {
-					newMin = i + 1;
-					break;
-				}
+			{
+				auto cLast = containsList[$-1];
+				int newMin = pos - cLast.length + 1;
+				int curMin = cLast.min;
+				cLast.shortenMin(newMin);
+				shortage.addRange(cLast.max, curMax);
 			}
-			if (cFirst.max > newMax) {
-				int oldValue = cFirst.max;
-				cFirst.max = newMax;
-				eachFillCell(newMax + 1, oldValue, &_setFill_checkContains);
-				ret = true;
-			}
-			if (cLast.min < newMin) {
-				int oldValue = cLast.min;
-				cLast.min = newMin;
-				eachFillCell(oldValue, newMin - 1, &_setFill_checkContains);
-				ret = true;
-			}
-
-			emptyIfAllExtentLength_lessThanNow(containsList, pos);
 		} else {
 			throw new ExclusiveException("No Extent at");
 		}

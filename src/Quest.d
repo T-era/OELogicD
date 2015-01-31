@@ -1,8 +1,8 @@
-import std.algorithm;
+private import std.algorithm;
 private import std.range;
-import std.conv;
-import std.string;
-import std.stdio;
+private import std.conv;
+private import std.string;
+private import std.stdio;
 private import parts.ExclusiveException;
 private import parts.Position;
 private import parts.CompList;

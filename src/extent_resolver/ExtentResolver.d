@@ -133,6 +133,7 @@ class ExtentResolver {
 		}
 		foreach (LinePossibility lp; hPossibility) {
 			if (!lp.done()) {
+				writeln(lp);
 				throw new Exception("??");
 			}
 		}
