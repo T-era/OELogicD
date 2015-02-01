@@ -1,5 +1,6 @@
 module extent_resolver.Shortage;
 private import Quest;
+private import std.string;
 import std.stdio;
 class Shortage {
 	private bool[int] fills;
@@ -9,6 +10,7 @@ class Shortage {
 	void addRange(int min, int max, Cell delegate(int) getCell) {
 		hasChange = true;
 		if (min > max) assert(false);
+		else if (min == max) { /*write("may be known..."); */ return; }
 		foreach (pos; min..max+1) {
 			Cell c = getCell(pos);
 			if (c == Cell.Fill
@@ -21,6 +23,9 @@ class Shortage {
 		foreach (pos, val; fills) {
 			f(pos);
 		}
+	}
+	override string toString() {
+		return format("%s", fills);
 	}
 }
 unittest {

@@ -140,7 +140,6 @@ class LinePossibility {
 			eventDone[pos] = true;
 		}
 		Shortage shortage = new Shortage();
-		bool hasChange = false;
 		if (cell == Cell.Empty) {
 			setEmpty(pos, shortage);
 		} else if (cell == Cell.Fill) {
@@ -149,6 +148,15 @@ class LinePossibility {
 			assert(false, "Invalid cell setting.");
 		}
 		if (shortage.HasChange) {
+			while (shortage.HasChange) {
+//writeln("152:", shortage);
+				Shortage next = new Shortage();
+				shortage.forEachFill(delegate(pos) {
+//writefln("155: %d", pos);
+					_checkFillArround(pos, next);
+				});
+				shortage = next;
+			}
 			checkUp();
 		}
 	}
@@ -197,6 +205,8 @@ class LinePossibility {
 			Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
 			auto lp = initTest(cells, &myCallBack, extents, &getCell);
 			lp.set(Cell.Fill, 9);
+			writeln(called);
+			writeln(lp);
 			assert(called == [9: Cell.Fill, 13: Cell.Empty]
 				|| called == [9: Cell.Fill, 10: Cell.Fill, 13: Cell.Empty] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
 				|| called == [6: Cell.Empty, 9: Cell.Fill, 13: Cell.Empty] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
@@ -279,6 +289,7 @@ class LinePossibility {
 		}
 	}
 	private void setFill(int pos, Shortage shortage) {
+		_checkFillArround(pos, shortage);
 		auto neighbor1List = filter!(ex => ex.min - 1 == pos)(extents);
 		foreach (Extent ex; neighbor1List) {
 			int now = ex.min;
@@ -292,7 +303,8 @@ class LinePossibility {
 			shortage.addRange(ex.max, now, getCell);
 		}
 	}
-	private bool _checkFillArround(int pos, Shortage s) {
+	private void _checkFillArround(int pos, Shortage shortage) {
+//		writeln("307: fa");
 		auto containsList = filter!(ex => ex.contains(pos))(extents).array();
 		if (containsList.length != 0) {
 			// first and last one shorten.
@@ -301,19 +313,18 @@ class LinePossibility {
 				int newMax = pos + cFirst.length - 1;
 				int curMax = cFirst.max;
 				cFirst.shortenMax(newMax);
-				shortage.addRange(cFirst.max, curMax);
+				shortage.addRange(cFirst.max, curMax, getCell);
 			}
 			{
 				auto cLast = containsList[$-1];
 				int newMin = pos - cLast.length + 1;
 				int curMin = cLast.min;
 				cLast.shortenMin(newMin);
-				shortage.addRange(cLast.max, curMax);
+				shortage.addRange(curMin, cLast.min, getCell);
 			}
 		} else {
 			throw new ExclusiveException("No Extent at");
 		}
-		return ret;
 	}
 	private void emptyIfAllExtentLength_lessThanNow(Extent[] containsList, int pos) {
 		int min = pos;

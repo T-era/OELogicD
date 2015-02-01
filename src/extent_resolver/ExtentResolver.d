@@ -126,6 +126,7 @@ class ExtentResolver {
 		return &_inner;
 	}
 	public bool done() {
+		checkUp();
 		foreach (LinePossibility lp; vPossibility) {
 			if (!lp.done()) {
 				return false;
@@ -134,7 +135,7 @@ class ExtentResolver {
 		foreach (LinePossibility lp; hPossibility) {
 			if (!lp.done()) {
 				writeln(lp);
-				throw new Exception("??");
+				throw new Exception(format("??\n%s", quest));
 			}
 		}
 		return true;
