@@ -3,20 +3,20 @@ private import std.range;
 private import std.conv;
 private import std.string;
 private import std.stdio;
-private import parts.ExclusiveException;
-private import parts.Position;
+
 private import parts.CompList;
+private import common;
 
 class Quest {
-	int[][] vHints;
-	int[][] hHints;
-	int width;
-	int height;
+	pos[][] vHints;
+	pos[][] hHints;
+	pos width;
+	pos height;
 	Cell[][] cells;
 
-	this(int[][] vHints, int[][] hHints) {
-		int height = hHints.length;
-		int width = vHints.length;
+	this(pos[][] vHints, pos[][] hHints) {
+		pos height = hHints.length;
+		pos width = vHints.length;
 		Cell[][] cs = new Cell[][](height, width);
 
 		if (sumOf(vHints) != sumOf(hHints)) {
@@ -27,13 +27,13 @@ class Quest {
 	this(string[] vHints, string[] hHints, string separator=",") {
 		this(
 			map!(
-				str => map!(to!int)(str.split(separator)).array()
+				str => map!(to!pos)(str.split(separator)).array()
 			)(vHints).array()
 			, map!(
-				str => map!(to!int)(str.split(separator)).array()
+				str => map!(to!pos)(str.split(separator)).array()
 			)(hHints).array());
 	}
-	private this(int[][] vHints, int[][] hHints, Cell[][] cells) {
+	private this(pos[][] vHints, pos[][] hHints, Cell[][] cells) {
 		this.vHints = vHints;
 		this.hHints = hHints;
 
@@ -42,10 +42,10 @@ class Quest {
 		this.cells = cells;
 	}
 
-	private static int sumOf(int[][] args) {
-		int sum = 0;
-		for (int i = 0; i < args.length; i ++) {
-			for (int j = 0; j < args[i].length; j ++) {
+	private static pos sumOf(pos[][] args) {
+		pos sum = 0;
+		for (pos i = 0; i < args.length; i ++) {
+			for (pos j = 0; j < args[i].length; j ++) {
 				sum += args[i][j];
 			}
 		}
@@ -95,10 +95,4 @@ class Quest {
 			, (a, b) => b ~ a
 			, (t1, t2) => t2 ~ "\n" ~ t1);
 	}
-}
-
-enum Cell {
-	Unknown, // Must be initial value.
-	Fill,
-	Empty
 }

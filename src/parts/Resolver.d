@@ -1,8 +1,8 @@
 module parts.Resolver;
-import Quest;
+import common;
 
 interface Resolver {
 	public void checkUp();
-	public void set(int x, int y, Cell cell);
+	public void set(pos  x, pos  y, Cell cell);
 	public bool done();
 }

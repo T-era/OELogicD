@@ -3,9 +3,8 @@ module force_resolver.ForceResolver;
 private import std.stdio;
 private import std.string;
 private import Quest;
-private import parts.ExclusiveException;
-private import parts.Position;
-private import extent_resolver.ExtentResolver;
+private import common;
+private import extent.ExtentResolver;
 private import parts.CompList;
 
 class ForceResolver {
@@ -31,6 +30,7 @@ class ForceResolver {
 				ForceResolver child = new ForceResolver(newSence);
 				child.checkUp();
 
+				writeln(newSence.quest);
 				copyInto!(Cell[])(newSence.quest.cells, sence.quest.cells);
 			} catch (ExclusiveException ex) {
 				this.sence.set(p.x, p.y, Cell.Empty);

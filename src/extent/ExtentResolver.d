@@ -1,14 +1,14 @@
-module extent_resolver.ExtentResolver;
+module extent.ExtentResolver;
 
 private import std.algorithm;
 private import std.range;
 private import std.stdio;
 private import std.string;
+
 private import Quest;
-private import extent_resolver.LinePossibility;
-private import parts.ExclusiveException;
-private import parts.Position;
+private import extent.LinePossibility;
 private import parts.Resolver;
+private import common;
 
 class ExtentResolver {
 	public Quest quest;
@@ -20,19 +20,21 @@ class ExtentResolver {
 		vp.length = quest.width;
 		LinePossibility[] hp;
 		hp.length = quest.height;
-		for (int x = 0; x < quest.width; x ++) {
+		for (pos x = 0; x < quest.width; x ++) {
 			vp[x] = new LinePossibility(
 				quest.height
 				, quest.vHints[x]
 				, this.verticalCallback(x)
-				, this.getCellAtX(x));
+				, this.getCellAtX(x)
+, format("x=%d", x));
 		}
-		for (int y = 0; y < quest.height; y ++) {
+		for (pos y = 0; y < quest.height; y ++) {
 			hp[y] = new LinePossibility(
 				quest.width
 				, quest.hHints[y]
 				, this.horizontalCallback(y)
-				, this.getCellAtY(y));
+				, this.getCellAtY(y)
+, format("y=%d", y));
 		}
 		this.quest = quest;
 		this.vPossibility = vp;
@@ -40,8 +42,8 @@ class ExtentResolver {
 	}
 	private this(Quest quest, LinePossibility[] originVPossibility, LinePossibility[] originHPossibility) {
 		this.quest = quest.copy();
-		int x = 0;
-		int y = 0;
+		pos x = 0;
+		pos y = 0;
 		this.vPossibility = map!(
 			item => item.deepCopy(
 				this.verticalCallback(x),
@@ -61,7 +63,8 @@ class ExtentResolver {
 			lp.checkUp();
 		}
 	}
-	public void set(int x, int y, Cell c) {
+	public void set(pos x, pos y, Cell c) {
+		writeln(x, y, c);
 		if (quest[y, x] == Cell.Unknown) {
 			quest[y, x] = c;
 			hPossibility[y].set(c, x);
@@ -69,17 +72,17 @@ class ExtentResolver {
 			hPossibility[y].checkUp();
 			vPossibility[x].checkUp();
 		} else {
-			throw new ExclusiveException(x, y, 
+			throw new ExclusiveException(x, y,
 				format("%s -> %s", quest[y, x], c));
 		}
 	}
 
-	private auto verticalCallback(int x) {
-		void _inner(Cell c, int y) {
+	private auto verticalCallback(pos x) {
+		void _inner(Cell c, pos y) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
 				LinePossibility lp = hPossibility[y];
-				if (! lp.isChecked(y)) {
+				if (! lp.isChecked(x)) {
 					quest[y, x] = c;
 					lp.set(c, x);
 					lp.checkUp();
@@ -88,8 +91,8 @@ class ExtentResolver {
 		}
 		return &_inner;
 	}
-	private auto horizontalCallback(int y) {
-		void _inner(Cell c, int x) {
+	private auto horizontalCallback(pos y) {
+		void _inner(Cell c, pos x) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
 				LinePossibility lp = vPossibility[x];
@@ -103,8 +106,8 @@ class ExtentResolver {
 		return &_inner;
 	}
 
-	private auto getCellAtX(int x) {
-		Cell _inner(int y) {
+	private auto getCellAtX(pos x) {
+		Cell _inner(pos y) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
 				return quest[y, x];
@@ -114,8 +117,8 @@ class ExtentResolver {
 		}
 		return &_inner;
 	}
-	private auto getCellAtY(int y) {
-		Cell _inner(int x) {
+	private auto getCellAtY(pos y) {
+		Cell _inner(pos x) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
 				return quest[y, x];
@@ -149,8 +152,8 @@ class ExtentResolver {
 	}
 	Position getEasyPoint() {
 		// TODO
-		for (int y = 0; y < quest.height; y ++) {
-			for (int x = 0; x < quest.width; x ++) {
+		for (pos y = 0; y < quest.height; y ++) {
+			for (pos x = 0; x < quest.width; x ++) {
 				if (quest[y, x] == Cell.Unknown) {
 					return new Position(x,y);
 				}
