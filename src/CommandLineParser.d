@@ -72,7 +72,6 @@ class CmdOptionWithValue(ValueType) : CmdOption {
 				string valueStr = key[shortSwitch.length + 1..$];
 				value = convert(valueStr);
 			} catch (Exception ex) {
-				writeln("test");
 				throw new UsageException(format("Value is invalid %s", key), this);
 			}
 			return 1;
@@ -81,7 +80,6 @@ class CmdOptionWithValue(ValueType) : CmdOption {
 				string valueStr = key[longSwitch.length + 1..$];
 				value = convert(valueStr);
 			} catch (Exception ex) {
-				writeln("test");
 				throw new UsageException(format("Value is invalid %s", key), this);
 			}
 			return 1;
@@ -90,7 +88,6 @@ class CmdOptionWithValue(ValueType) : CmdOption {
 				value = convert(args[index + 1]);
 				return 2;
 			} catch (Exception ex) {
-				writeln("test");
 				throw new UsageException(format("Value is invalid %s", key), this);
 			}
 		} else {
