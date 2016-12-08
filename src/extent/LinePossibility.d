@@ -6,16 +6,13 @@ private import std.stdio;
 private import std.string;
 
 private import extent.Extent;
-private import parts.Resolver;
 private import parts.CompList;
 private import common;
-
-alias void delegate(Cell, pos) SetCell;
 
 class LinePossibility {
 	private pos[] hints;
 	private bool[pos] eventDone;
-	private Extent[] extents;
+	private Extent extents;
 	private pos size;
 	private SetCell callback;
 	private GetCell getCell;
@@ -25,27 +22,33 @@ class LinePossibility {
 			set(c, p);
 			f(c,p);
 		}
-		Extent[] exts;
-		exts.length = hints.length;
 		pos temp = 0;
+		Extent extPrev;
+		Extent head;
+		Extent ext;
 		for (int i = 0; i < hints.length; i ++) {
-			exts[i] = new Extent(getF, hints[i], i == 0 ? null : exts[i-1], dbg ~ format("::%s %d", hints, size));
-			exts[i].min = temp;
+			ext = new Extent(getF, hints[i], i == 0 ? null : extPrev, dbg ~ format("::%s %d", hints, size));
+			if (i == 0) {
+				head = ext;
+			}
+			ext.min = temp;
+			extPrev = ext;
 			temp += hints[i] + 1;
 		}
 		temp = size - 1;
 		for (pos i = hints.length - 1; i >= 0; i --) {
-			exts[i].max = temp;
+			ext.max = temp;
 			temp -= hints[i] + 1;
+			ext = ext.prev;
 		}
 		bool[pos] ed;
-		this(size, hints, exts, ed, &mixedF, getF);
+		this(size, hints, head, ed, &mixedF, getF);
 	}
 
 	/*
 	 Constructor for copy.
 	 */
-	private this(pos size, pos[] hints, Extent[] extents, bool[pos] eventDone, SetCell callback, GetCell getCell) {
+	private this(pos size, pos[] hints, Extent extents, bool[pos] eventDone, SetCell callback, GetCell getCell) {
 		this.size = size;
 		this.hints = hints;
 		this.callback = callback;
@@ -65,14 +68,14 @@ class LinePossibility {
 	public void checkUp() {
 		checkUpFunc(this.extents, this.size, this.callback);
 	}
-	private static void checkUpFunc(Extent[] extents, pos size, SetCell callback) {
-		if (extents.length == 0) {
+	private static void checkUpFunc(Extent extents, pos size, SetCell callback) {
+		if (extents is null) {
 			for (int i = 0; i < size; i ++) {
 				callback(Cell.Empty, i);
 			}
 		} else {
 			pos prevMax = -1;
-			foreach (Extent ex; extents) {
+			for (Extent ex = extents; ex !is null; ex = ex.next) {
 				if (ex.isFixed()) {
 					if (ex.min-1 >= 0)
 						callback(Cell.Empty, ex.min-1);
@@ -91,15 +94,17 @@ class LinePossibility {
 		}
 	}
 	unittest {
-		Extent[] testExtentList(GetCell getCell, pos[][] fromToList) {
+		Extent testExtentList(GetCell getCell, pos[][] fromToList) {
 			Extent prev = null;
-			Extent[] list = [];
+			Extent list = null;
 			foreach (pos[] fromTo; fromToList) {
 				Extent obj = new Extent(getCell, fromTo[0], prev);
+				if (list is null) {
+					list = obj;
+				}
 				obj.min = fromTo[1];
 				obj.max = fromTo[2];
 				prev = obj;
-				list ~= obj;
 			}
 			return list;
 		}
@@ -160,7 +165,7 @@ class LinePossibility {
 		        ---4---
 		*/
 		Cell[] init = [Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown];
-		LinePossibility initTest(Cell[] cells, SetCell callback, Extent[] extents, GetCell getCell) {
+		LinePossibility initTest(Cell[] cells, SetCell callback, Extent extents, GetCell getCell) {
 			bool[pos] eventDone;
 			return new LinePossibility(
 				cells.length,
@@ -170,17 +175,19 @@ class LinePossibility {
 				callback,
 				getCell);
 		}
-		Extent[] testExtentList(GetCell getCell, pos[][] fromToList) {
+		Extent testExtentList(GetCell getCell, pos[][] fromToList) {
 			Extent prev = null;
-			Extent[] list = [];
+			Extent head = null;
 			foreach (pos[] fromTo; fromToList) {
 				Extent obj = new Extent(getCell, fromTo[0], prev);
 				obj.min = fromTo[1];
 				obj.max = fromTo[2];
 				prev = obj;
-				list ~= obj;
+				if (head is null) {
+					head = obj;
+				}
 			}
-			return list;
+			return head;
 		}
 		Cell[] cells;
 		Cell getCell(pos pos) {
@@ -194,33 +201,33 @@ class LinePossibility {
 			cells = .deepCopy!(Cell)(init);
 			called = null;
 
-			Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
+			Extent extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
 			auto lp = initTest(cells, &myCallBack, extents, &getCell);
 			lp.set(Cell.Fill, 9);
 			assert(called == [cast(pos)(9): Cell.Fill, cast(pos)(13): Cell.Empty]
 				|| called == [cast(pos)(9): Cell.Fill, cast(pos)(10): Cell.Fill, cast(pos)(13): Cell.Empty] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
 				|| called == [cast(pos)(6): Cell.Empty, cast(pos)(9): Cell.Fill, cast(pos)(13): Cell.Empty] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
 				|| called == [cast(pos)(6): Cell.Empty, cast(pos)(9): Cell.Fill, cast(pos)(10): Cell.Fill, cast(pos)(13): Cell.Empty]);
-			assert(extents[0].min == 0);
-			assert(extents[0].max == 5);
-			assert(extents[1].min == 7);
-			assert(extents[1].max == 12);
+			assert(extents.min == 0);
+			assert(extents.max == 5);
+			assert(extents.next.min == 7);
+			assert(extents.next.max == 12);
 		}
 		testSetEmpty: {
 			cells = .deepCopy!(Cell)(init);
 			called = null;
 
-			Extent[] extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
+			Extent extents = testExtentList(&getCell, [[2,0,8],[4,7,13]]);
 			auto lp = initTest(cells, &myCallBack, extents, &getCell);
 			lp.set(Cell.Empty, 8);
 			assert(called == [cast(pos)(7): Cell.Empty, cast(pos)(8): Cell.Empty, cast(pos)(11): Cell.Fill, cast(pos)(12): Cell.Fill]
 				|| called == [cast(pos)(6): Cell.Empty, cast(pos)(7): Cell.Empty, cast(pos)(8): Cell.Empty, cast(pos)(11): Cell.Fill, cast(pos)(12): Cell.Fill] // Empty@6 はコールバックされてもされなくてもOK(決定済み)
 				|| called == [cast(pos)(7): Cell.Empty, cast(pos)(8): Cell.Empty, cast(pos)(10): Cell.Fill, cast(pos)(11): Cell.Fill, cast(pos)(12): Cell.Fill] // Fill@10 はコールバックされてもされなくてもOK(決定済み)
 				|| called == [cast(pos)(6): Cell.Empty, cast(pos)(7): Cell.Empty, cast(pos)(8): Cell.Empty, cast(pos)(10): Cell.Fill, cast(pos)(11): Cell.Fill, cast(pos)(12): Cell.Fill]);
-			assert(extents[0].min == 0);
-			assert(extents[0].max == 5);
-			assert(extents[1].min == 9);
-			assert(extents[1].max == 13);
+			assert(extents.min == 0);
+			assert(extents.max == 5);
+			assert(extents.next.min == 9);
+			assert(extents.next.max == 13);
 		}
 		testSet3: {
 			/*
@@ -236,7 +243,7 @@ class LinePossibility {
 				cells[pos] = c;
 			}
 
-			Extent[] extents = testExtentList(&getCell, [[1,0,2],[1,2,7],[2,6,10]]);
+			Extent extents = testExtentList(&getCell, [[1,0,2],[1,2,7],[2,6,10]]);
 			auto lp = initTest(cells, &_myCallBack1, extents, &getCell);
 			lp.set(Cell.Fill, 4);
 			assert(cells == [Cell.Empty, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Fill, Cell.Empty, Cell.Unknown, Cell.Fill, Cell.Unknown, Cell.Empty, Cell.Empty]);
@@ -254,7 +261,7 @@ class LinePossibility {
 				cells[pos] = c;
 			}
 
-			Extent[] extents = testExtentList(&getCell, [[1,0,2],[2,1,6]]);
+			Extent extents = testExtentList(&getCell, [[1,0,2],[2,1,6]]);
 			auto lp = initTest(cells, &_myCallBack2, extents, &getCell);
 			lp.set(Cell.Empty, 1);
 			lp.checkUp();
@@ -265,7 +272,12 @@ class LinePossibility {
 	}
 	private bool setEmpty(pos pos) {
 		bool ret = false;
-		auto containsList = filter!(ex => ex.contains(pos))(extents);
+		Extent[] containsList = [];
+		for (Extent ex = extents; ex !is null; ex = ex.next) {
+			if (ex.contains(pos)) {
+				containsList ~= ex;
+			}
+		}
 		foreach(Extent ex; containsList) {
 			if  (pos - ex.min < ex.length) {
 				ex.shortenMin(pos + 1);
@@ -280,22 +292,30 @@ class LinePossibility {
 	}
 	private bool setFill(pos pos) {
 		bool ret = false;
-		auto neighbor1List = filter!(ex => ex.min - 1 == pos)(extents);
-		foreach (Extent ex; neighbor1List) {
-			ex.shortenMin(ex.min + 1);
-			ret = true;
+
+		for (Extent ex = extents; ex !is null; ex = ex.next) {
+			if (ex.min - 1 == pos) {
+				ex.shortenMin(ex.min + 1);
+				ret = true;
+			}
 		}
-		auto neighbor2List = filter!(ex => ex.max + 1 == pos)(extents);
-		foreach (Extent ex; neighbor2List) {
-			ex.shortenMax(ex.max - 1);
-			ret = true;
+		for (Extent ex = extents; ex !is null; ex = ex.next) {
+			if (ex.max + 1 == pos) {
+				ex.shortenMax(ex.max - 1);
+				ret = true;
+			}
 		}
 		ret |= _setFill_checkContains(pos);
 		return ret;
 	}
 	private bool _setFill_checkContains(pos pos) {
 		bool ret = false;
-		auto containsList = filter!(ex => ex.contains(pos))(extents).array();
+		Extent[] containsList = [];
+		for (Extent ex = extents; ex !is null; ex = ex.next) {
+			if (ex.contains(pos)) {
+				containsList ~= ex;
+			}
+		}
 		if (containsList.length != 0) {
 			// first and last one shorten.
 			auto cFirst = containsList[0];
@@ -335,6 +355,9 @@ class LinePossibility {
 		return ret;
 	}
 	private void emptyIfAllExtentLength_lessThanNow(Extent[] containsList, pos pos) {
+		// (いまFillに決まったセルを中心に)ひとかたまりのFillが存在し、かつそれを含むExntentにそれより長いlengthのものがなければ
+		// Fillのかたまりの長さが決定する。
+		// 例:　ヒントに同じ数字が並んでいて、どれに当たるかは未確定ながら長さが確定するケース。
 		auto min = pos;
 		auto max = pos;
 		while (getCell(min-1) ==  Cell.Fill)
@@ -342,6 +365,7 @@ class LinePossibility {
 		while (getCell(max+1) ==  Cell.Fill)
 			max ++;
 		auto length = max - min + 1;
+		// length: ひとかたまりのFillセルの長さ。
 		if (filter!(ex => ex.length > length)(containsList).array().length == 0) {
 			callback(Cell.Empty, min - 1);
 			callback(Cell.Empty, max + 1);
@@ -357,7 +381,7 @@ class LinePossibility {
 		return hasChange;
 	}
 	public bool done() {
-		foreach (Extent ex; extents) {
+		for (Extent ex = extents; ex !is null; ex = ex.next) {
 			if (! ex.isFixed()) {
 				return false;
 			}
@@ -367,12 +391,7 @@ class LinePossibility {
 
 	/* for force resolve */
 	LinePossibility deepCopy(SetCell callback, GetCell getCell) {
-		Extent prev = null;
-		Extent newExtent(Extent origin) {
-			prev = origin.deepCopy(getCell, prev);
-			return prev;
-		}
-		Extent[] cp = map!(newExtent)(this.extents).array();
+		Extent cp = extents.deepCopy(getCell, null);
 		bool[pos] ed;
 		foreach (key, val; this.eventDone) {
 			ed[key] = val;
@@ -380,14 +399,9 @@ class LinePossibility {
 		return new LinePossibility(size, hints, cp, ed, callback, getCell);
 	}
 
-	pos getScore() {
-		return reduce!((a, b) => a+b)
-			(pos.init, map!(ex => ex.getScore())(extents));
-	}
-
 	public override string toString() {
 		string str = "";
-		foreach (Extent ex; extents) {
+		for (Extent ex = extents; ex !is null; ex = ex.next) {
 			str ~= ex.toString();
 			str ~= " ";
 		}
@@ -487,14 +501,11 @@ unittest {
 	lp.checkUp();
 	writeln("-----_____-----");
 	writeln(cells);
-	foreach (Extent ext; lp.extents) {
-		writeln(ext);
-	}
 
 	lp.set(E, 5);
 	lp.checkUp();
 	writeln(cells);
-	foreach (Extent ext; lp.extents) {
+	for (Extent ext = lp.extents; ext !is null; ext = ext.next) {
 		writeln(ext);
 	}
 	writeln("-----_____-----");

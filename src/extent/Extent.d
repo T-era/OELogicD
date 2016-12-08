@@ -29,9 +29,8 @@ private const string dbg;
 	pos min() { return _min; }
 	pos max() { return _max; }
 	pos length() { return _length; }
-	package pos min(pos arg) { return _min = arg; }
-	package pos max(pos arg) { return _max = arg; }
-	package pos length(pos arg) { return _length = arg; }
+	package void min(pos arg) { _min = arg; }
+	package void max(pos arg) { _max = arg; }
 
 	this(GetCell getCell, pos length, Extent prev, string dbg="") {
 this.dbg = dbg;
@@ -95,6 +94,7 @@ this.dbg = dbg;
 		} while (more);
 		return temp;
 	}
+
 	unittest {
 		// X??? ??????? ???X
 		Cell[] cells = [ Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty

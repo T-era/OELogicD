@@ -2,6 +2,7 @@ import std.string;
 
 alias pos = sizediff_t;
 alias Cell delegate(pos) GetCell;
+alias void delegate(Cell, pos) SetCell;
 
 enum Cell {
 	Unknown, // Must be initial value.

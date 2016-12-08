@@ -7,7 +7,6 @@ private import std.string;
 
 private import Quest;
 private import extent.LinePossibility;
-private import parts.Resolver;
 private import common;
 
 class ExtentResolver {
@@ -40,21 +39,24 @@ class ExtentResolver {
 		this.vPossibility = vp;
 		this.hPossibility = hp;
 	}
-	private this(Quest quest, LinePossibility[] originVPossibility, LinePossibility[] originHPossibility) {
-		this.quest = quest.copy();
+
+	// コピーコンストラクタ
+	private this(ExtentResolver src) {
+		this.quest = src.quest.copy();
 		pos x = 0;
 		pos y = 0;
 		this.vPossibility = map!(
 			item => item.deepCopy(
 				this.verticalCallback(x),
 				this.getCellAtX(x++)
-			))(originVPossibility).array();
+			))(src.vPossibility).array();
 		this.hPossibility = map!(
 			item => item.deepCopy(
 				this.horizontalCallback(y),
 				this.getCellAtY(y++)
-			))(originHPossibility).array();
+			))(src.hPossibility).array();
 	}
+
 	public void checkUp() {
 		foreach(LinePossibility lp; vPossibility) {
 			lp.checkUp();
@@ -77,7 +79,7 @@ class ExtentResolver {
 		}
 	}
 
-	private auto verticalCallback(pos x) {
+	private SetCell verticalCallback(pos x) {
 		void _inner(Cell c, pos y) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
@@ -91,7 +93,7 @@ class ExtentResolver {
 		}
 		return &_inner;
 	}
-	private auto horizontalCallback(pos y) {
+	private SetCell horizontalCallback(pos y) {
 		void _inner(Cell c, pos x) {
 			if (0 <= x && x < quest.width
 				&& 0 <= y && y < quest.height) {
@@ -106,7 +108,7 @@ class ExtentResolver {
 		return &_inner;
 	}
 
-	private auto getCellAtX(pos x) {
+	private GetCell getCellAtX(pos x) {
 		Cell _inner(pos y) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
@@ -117,7 +119,7 @@ class ExtentResolver {
 		}
 		return &_inner;
 	}
-	private auto getCellAtY(pos y) {
+	private GetCell getCellAtY(pos y) {
 		Cell _inner(pos x) {
 			if (0 <= y && y < quest.height
 				&& 0 <= x && x < quest.width) {
@@ -146,9 +148,7 @@ class ExtentResolver {
 
 	/* for force resolve */
 	ExtentResolver deepCopy() {
-		return new ExtentResolver(this.quest
-			, this.vPossibility
-			, this.hPossibility);
+		return new ExtentResolver(this);
 	}
 	Position getEasyPoint() {
 		// TODO
@@ -169,7 +169,6 @@ class ExtentResolver {
 				writeln(lp);
 			}
 		}
-//		writeln(quest);
 		throw new Exception(format("done"));
 	}
 
