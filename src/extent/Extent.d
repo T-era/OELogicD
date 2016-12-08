@@ -1,11 +1,14 @@
-module extent.Extent;
+module extent.Extent0;
 
 import std.exception;
-private import std.string;
 private import std.algorithm;
+private import std.array;
 private import std.stdio;
+private import std.string;
+
 private import common;
-private import extent.ShortenListener;
+private import extent.ExtentFragment;
+
 
 /// ヒントで示された[長さ]が取りうる位置範囲。
 ///
@@ -14,249 +17,213 @@ private import extent.ShortenListener;
 ///
 /// shorten**メソッドによって、このオブジェクトは自律的に短縮をします。この際、コンストラクタで指定されたgetCellによって各座標のCell内容を得ます。
 /// また、shorten**メソッドによって範囲の見直しが発生すると、両隣のExtentに対してもshorten** の連鎖を起こします。
-class Extent : ShortenOwner!(Extent) {
-private const string dbg;
-	private GetCell getCell;
-	private ShortenListener!(Extent) listener;
+class Extent {
+	private const string dbg;
+
 	private Extent _prev;
 	private Extent _next;
 	private pos _length;
-	private pos _min;
-	private pos _max;
+	private ExtentFragment _fragmentsHead;
+	private ExtentFragment _fragmentsTail;
 
+	pos min() { return _fragmentsHead._min; }
+	pos max() { return _fragmentsTail._max; }
+	pos length() { return _length; }
 	Extent prev() { return _prev; }
 	Extent next() { return _next; }
-	pos min() { return _min; }
-	pos max() { return _max; }
-	pos length() { return _length; }
-	package void min(pos arg) { _min = arg; }
-	package void max(pos arg) { _max = arg; }
 
-	this(GetCell getCell, pos length, Extent prev, string dbg="") {
-this.dbg = dbg;
-		this.getCell = getCell;
+	package void min(pos arg) {
+		if (_fragmentsHead._min < arg) {
+			_fragmentsHead = _fragmentsHead.minChange(arg, _length);
+			if (_next !is null) {
+				_next.min(_fragmentsHead._min + length + 1);
+			}
+		}
+	}
+	package void max(pos arg) {
+		if (_fragmentsTail._max > arg) {
+			_fragmentsTail = _fragmentsTail.maxChange(arg, _length);
+			if (_prev !is null) {
+				_prev.max(_fragmentsTail._max - length - 1);
+			}
+		}
+ 	}
+
+	this(pos length, Extent prev, string dbg="") {
+		this.dbg = dbg;
 		this._length = length;
+		ExtentFragment exf = new ExtentFragment(0, pos.max);
+		this._fragmentsHead = exf;
+		this._fragmentsTail = exf;
+
 		this._prev = prev;
 		if (prev) {
 			prev.setNext(this);
 		}
-		this.listener = new ShortenListener!(Extent)(this);
 	}
 	private void setNext(Extent next) {
 		this._next = next;
 	}
 
-	public void shortenMin(pos p) {
-		if (p > min) {
-			pos minDef = min;
-			pos len = getShorten(p, +1);
-			writefln("s:%d %s %d", p, this, len);
-			min = p + len;
-			checkLength();
-			if (next !is null)
-				next.shortenMin(min + length + 1);
+	// コピーコンストラクタ
+	this(Extent src) {
+		this.dbg = src.dbg;
+		this._length = src.length;
+		this._fragmentsHead = src._fragmentsHead.deepCopy();
+		auto tail = this._fragmentsHead;
+		for(;tail._next !is null;tail = tail._next) {}
+		this._fragmentsTail = tail;
 
-			listener.minShorted(minDef, getCell);
+		if (src._next) {
+			this._next = new Extent(src._next);
+			this._next._prev = this;
 		}
 	}
-	public void shortenMax(pos p) {
-		if (p < max) {
-			pos maxDef = max;
-			pos len = getShorten(p, -1);
-			max = p + len;
-			checkLength();
-			if (prev !is null)
-				prev.shortenMax(max - length - 1);
 
-			listener.maxShorted(maxDef, getCell);
+	public void setCell(pos at, Cell cell) {
+		switch (cell) {
+		case Cell.Fill:
+			setCellFill(at);
+			break;
+		case Cell.Empty:
+			setCellEmpty(at);
+			break;
+		default:
+			enforce(false);
 		}
 	}
-	private pos getShorten(pos p, int direction) {
-		pos temp = 0;
-		bool more;
-		do {
-			more = false;
-			pos edge = p + temp;
-			pos edge2 = edge + (direction * length) - direction;
-			if (getCell(edge - direction) == Cell.Fill
-				|| getCell(edge2 + direction) == Cell.Fill) {
-				temp += direction;
-				more = true;
-			} else {
-				for (pos i = length - 1; i >= 0; i --) {
-					if (getCell(edge + (direction * i)) == Cell.Empty) {
-						temp += direction * (i + 1);
-						more = true;
-						break;
-					}
+	private void setCellFill(pos at) {
+		for (auto temp = _fragmentsHead; temp !is null; temp = temp._next) {
+			if (at == temp._min - 1) {
+				temp.minChange(at + 1, _length);
+			} else if (at == temp._max + 1) {
+				temp.maxChange(at + 1, _length);
+			}
+		}
+		if (_fragmentsHead == _fragmentsTail) {
+			_fragmentsHead.minChange(at - _length + 1, _length);
+			_fragmentsHead.maxChange(at + _length - 1, _length);
+		}
+	}
+	private void setCellEmpty(pos at) {
+		pos orgMin = _fragmentsHead._min;
+		pos orgMax = _fragmentsTail._max;
+		for (auto temp = _fragmentsHead; temp !is null; temp = temp._next) {
+			if (temp._min <= at && at <= temp._max) {
+				auto chopped = temp.chop(at, _length);
+				if (temp == _fragmentsHead) {
+					_fragmentsHead = chopped;
+				}
+				if (temp == _fragmentsTail) {
+					for (;chopped._next !is null; chopped = chopped._next) {}
+					_fragmentsTail = chopped;
 				}
 			}
-		} while (more);
-		return temp;
+		}
+		if (orgMin != _fragmentsHead._min && next !is null) {
+			next.min(_fragmentsHead._min + length + 1);
+		}
+		if (orgMax != _fragmentsTail._max && prev !is null) {
+			prev.max(_fragmentsTail._max - length - 1);
+		}
 	}
 
-	unittest {
-		// X??? ??????? ???X
-		Cell[] cells = [ Cell.Fill, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Empty
-			, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Unknown
-			, Cell.Empty, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill];
-		Cell getCell(pos p) {
-			if (p < 0 || p >= cells.length)
-				return Cell.Empty;
-			return cells[p];
-		}
-		void testGetShorten() {
-			Extent ext = new Extent(&getCell, 3, null);
-			ext.max = cells.length;
-			ext.min = 0;
-			assert(0 == ext.getShorten(0, 1)); // where len3 block can be in [X???_???????_???X] ?
-			assert(4 == ext.getShorten(1, 1)); // where len3 block can be in [X???_???????_???X] ?(but more than @1)
-			assert(0 == ext.getShorten(9, 1)); // to be [---------???_???X]
-			assert(4 == ext.getShorten(10, 1)); // to be [--------------??X]
-			assert(0 == ext.getShorten(16, -1)); // where len3 block can be in [X???_???????_???X] ?
-			assert(-4 == ext.getShorten(15, -1)); // where len3 block can be in [X???_???????_???X] ?(but less than @7)
-		}
-		void testShortenChain() {
-			Extent ext1 = new Extent(&getCell, 3, null);
-			Extent ext2 = new Extent(&getCell, 3, ext1);
-			Extent ext3 = new Extent(&getCell, 3, ext2);
-			void init() {
-				ext1.max = cells.length - 2;
-				ext1.min = 0;
-				ext2.max = cells.length - 2;
-				ext2.min = 1;
-				ext3.max = cells.length - 1;
-				ext3.min = 1;
+	public void cleanUp(SetCell _callback) {
+		if (_fragmentsHead == _fragmentsTail) {
+			// 一つなら
+			pos d = length * 2 - (_fragmentsHead._max - _fragmentsHead._min + 1);
+			if (d <= 0) {
+				return;
+			} else {
+				pos fillMin = _fragmentsHead._max - length + 1;
+				pos fillMax = _fragmentsHead._min + length - 1;
+				for (pos i = fillMin; i <= fillMax; i ++) {
+					_callback(Cell.Fill, i);
+				}
 			}
-			init();
-			ext1.shortenMin(1);
-			// to be [X??? ??????? ???X]
-			//  ext1:      ---...
-			//  ext2:          ---...
-			//  ext3:               ---
-			assert(5 == ext1.min); // smoke
-			assert(9 == ext2.min); // chain to next
-			assert(14 == ext3.min); // chain to next after next
-
-			init();
-			ext3.shortenMax(cells.length - 2);
-			assert(11 == ext3.max); // smoke
-			assert(7 == ext2.max); // chain to prev
-			assert(2 == ext1.max); // chain to prev before prev
 		}
-		testGetShorten();
-		testShortenChain();
-	}
-	unittest {
-		// ?X???X???
-		Cell[] cells = [Cell.Unknown, Cell.Fill
-				, Cell.Unknown, Cell.Unknown, Cell.Unknown, Cell.Fill
-				, Cell.Unknown, Cell.Unknown, Cell.Unknown];
-		Cell getCell(pos p) {
-			if (p < 0 || p >= cells.length)
-				return Cell.Empty;
-			return cells[p];
-		}
-		void testShortenNOTchained() {
-			Extent ext1 = new Extent(&getCell, 2, null);
-			Extent ext2 = new Extent(&getCell, 2, ext1);
-			Extent ext3 = new Extent(&getCell, 2, ext2);
-			ext1.max = cells.length - 1;
-			ext1.min = 0;
-			ext2.max = cells.length - 1;
-			ext2.min = 0;
-			ext3.max = cells.length - 1;
-			ext3.min = 0;
-			ext1.shortenMax(2);
-			assert(0 == ext1.min);
-			assert(2 == ext1.max);
-			assert(0 == ext2.min);
-			assert(8 == ext2.max);
-			assert(0 == ext3.min);
-			assert(8 == ext3.max);
-		}
-		void testShortenChained() {
-			Extent ext1 = new Extent(&getCell, 2, null);
-			Extent ext2 = new Extent(&getCell, 2, ext1);
-			ext1.max = cells.length - 1;
-			ext1.min = 0;
-			ext2.max = cells.length - 1;
-			ext2.min = 0;
-			ext1.shortenMax(2);
-			assert(0 == ext1.min);
-			assert(2 == ext1.max);
-			assert(4 == ext2.min);
-			assert(6 == ext2.max);
-		}
-		testShortenNOTchained();
-		testShortenChained();
 	}
 
-	private void checkLength() {
-		if (max - min + 1 < length)
-			throw new ExclusiveException(format(
-				"Length %d(%d)", max - min + 1, length));
-	}
 	public bool contains(pos arg) {
-		return min <= arg
-			&& arg <= max;
+		for (ExtentFragment temp = _fragmentsHead; temp !is null; temp = temp._next) {
+			if (temp.contains(arg)) {
+				return true;
+			}
+		}
+		return false;
 	}
 	public bool isFixed() {
-		checkLength();
-		return max - min + 1 == length;
-	}
-	public void fillCenter(void delegate(pos ) fillCallback) {
-		pos d = length * 2 - (max - min + 1);
-		if (d <= 0) {
-			return;
-		} else {
-			pos fillMin = max - length + 1;
-			pos fillMax = min + length - 1;
-			for (pos i = fillMin; i <= fillMax; i ++) {
-				fillCallback(i);
-			}
-		}
-	}
-	unittest {
-		Extent ext = new Extent(null, 5, null);
-		ext.min = 1;
-		ext.max = 7;
-		pos[] called = [];
-		void callback(pos arg) {
-			called ~= arg;
-		}
-		ext.fillCenter(&callback);
-		pos[] expected = [3,4,5];
-		assert(sort!("a>b")(called) == sort!("a>b")(expected));
-		writeln(called);
-	}
-
-	/* for force resolve */
-	Extent deepCopy(GetCell getCell, Extent cpPrev) {
-		Extent cp = new Extent(getCell, this.length, cpPrev);
-		cp.min = this.min;
-		cp.max = this.max;
-		return cp;
-	}
-	unittest {
-		Cell getCell1(pos p) { return Cell.Unknown; }
-		Cell getCell2(pos p) { return Cell.Unknown; }
-		Extent exOriginParent = new Extent(null, 1, null);
-		Extent exCopyParent = new Extent(null, 1, null);
-		Extent exOrigin = new Extent(&getCell1, 1, exOriginParent);
-		Extent exCopy = exOrigin.deepCopy(&getCell2, exCopyParent); // TODO getCell
-		assert(exOrigin.min == exCopy.min);
-		assert(exOrigin.max == exCopy.max);
-		assert(exOrigin.length == exCopy.length);
-		assert(exOrigin.getCell != exCopy.getCell);
-	}
-
-	pos getScore() {
-		// 0-...
-		return max - min + 1 - length;
+		return (_fragmentsHead == _fragmentsTail
+				&& _fragmentsHead._max - _fragmentsHead._min + 1 == length);
 	}
 
 	public override string toString() {
-		return format("%s %d-%d@%d", dbg, min, max, length);
+		return format("%s @%d(%s)", dbg, length, _fragmentsHead);
+	}
+
+	// 不変条件表明
+	invariant() {
+		void check(const(ExtentFragment) temp) {
+			if (temp._next !is null) {
+				//　断片の範囲は重なり合わない。
+				assert(temp._max < temp._next._min);
+			}
+			// すべての断片が有効なサイズを持つ
+			assert(temp._max - temp._min >= _length - 1);
+			if (temp._next !is null) {
+				check(temp._next);
+			}
+		}
+		check(_fragmentsHead);
+	}
+	unittest {
+		testCopy: {
+			Extent ext = new Extent(4, null, "");
+			ext.max(20);
+
+			ext.setCell(5, Cell.Empty);
+			Extent copy = new Extent(ext);
+
+			assert(ext.toString() == " @4(0-4, 6-20)");
+			ext.setCell(12, Cell.Empty);
+			assert(ext.toString() == " @4(0-4, 6-11, 13-20)");
+			assert(copy.toString() == " @4(0-4, 6-20)");
+		}
+		testSetClean: {
+			Extent ext = new Extent(4, null, "");
+			ext.max(20);
+
+			ext.setCell(11, Cell.Empty);
+			assert(ext.toString() == " @4(0-10, 12-20)");
+			ext.setCell(5, Cell.Empty);
+			assert(ext.toString() == " @4(0-4, 6-10, 12-20)");
+			ext.setCell(15, Cell.Empty);
+			assert(ext.toString() == " @4(0-4, 6-10, 16-20)");
+			ext.setCell(12, Cell.Empty);
+			assert(ext.toString() == " @4(0-4, 6-10, 16-20)");
+			ext.setCell(2, Cell.Empty);
+			assert(ext.toString() == " @4(6-10, 16-20)", ext.toString());
+			ext.cleanUp((c, x) { assert(false, "CALLED"); });
+			ext.setCell(18, Cell.Empty);
+			assert(ext.toString() == " @4(6-10)", ext.toString());
+			pos[] cleanUpArgs1 = [];
+			Cell[] cleanUpArgs2 = [];
+			ext.cleanUp((c, x) {
+				cleanUpArgs1 ~= x;
+				cleanUpArgs2 ~= c;
+			});
+			assert(cleanUpArgs1.sort().array() == [7,8,9]);
+			assert(cleanUpArgs2 == [Cell.Fill,Cell.Fill,Cell.Fill]);
+		}
+		testRemove: {
+			Extent ext = new Extent(1, null, "");
+			ext.max(2);
+			ext.setCell(1, Cell.Empty);
+			ext.setCell(2, Cell.Fill);
+			ext.min(1);
+			assert(ext._fragmentsHead == ext._fragmentsTail);
+			assert(ext._fragmentsHead._min == 2);
+			assert(ext._fragmentsHead._max == 2);
+		}
 	}
 }
