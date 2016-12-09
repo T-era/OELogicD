@@ -1,4 +1,4 @@
-module extent.Extent0;
+module extent.Extent;
 
 import std.exception;
 private import std.algorithm;

@@ -52,10 +52,10 @@ class Quest {
 		return sum;
 	}
 
-	Cell opIndex(size_t y, size_t x) {
+	Cell opIndex(immutable(size_t) y, immutable(size_t) x) {
 		return cells[y][x];
 	}
-	void opIndexAssign(Cell c, size_t y, size_t x) {
+	void opIndexAssign(Cell c, immutable(size_t) y, immutable(size_t) x) {
 		if (cells[y][x] == c) {
 			// do nothing.
 		} else if (cells[y][x] == Cell.Unknown) {
@@ -64,6 +64,10 @@ class Quest {
 			throw new ExclusiveException(new Position(x, y),
 				format("Another value assigned.%s -> %s", cells[y][x], c));
 		}
+	}
+	bool isIn(size_t x, size_t y) {
+		return 0 <= x && x < width
+			&& 0 <= y && y < height;
 	}
 
 	Quest copy() {

@@ -1,7 +1,6 @@
 private import std.stdio;
 private import std.string;
 private import Quest;
-private import extent_resolver.Resolver;
 private import extent_resolver.LinePossibility;
 import std.algorithm;
 
